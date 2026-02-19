@@ -103,3 +103,120 @@ To keep the codebase clear and reviewable, do NOT leave dead code or commented-o
 - **Avoid commented experiments:** Do not keep large blocks of commented-out code in production files — use a branch or draft PR for experiments instead.
 - **Small, reversible changes:** Keep PRs focused and small so it's easy to revert or iterate; include migration notes for any structural changes.
 
+Security & Privacy Requirements
+
+AI-generated code must follow secure-by-default practices:
+
+Never hardcode secrets, API keys, tokens, or credentials.
+
+Use environment variables (import.meta.env for Vite) for sensitive values.
+
+Do not log sensitive user data (PII, auth tokens, payment info).
+
+Validate and sanitize all user inputs.
+
+Use HTTPS-only endpoints for external communication.
+
+Follow the principle of least privilege for API access.
+
+Avoid introducing XSS, CSRF, or injection vulnerabilities.
+
+State Management Guidelines
+
+Maintain predictable and scalable state handling:
+
+Prefer local component state when possible.
+
+Use React Context sparingly for truly global state.
+
+Avoid unnecessary global stores.
+
+Keep server state separate from UI state.
+
+Normalize complex data structures to prevent duplication.
+
+Ensure async state updates handle loading and error states.
+
+Error Handling & Observability
+
+Generated code must fail safely and visibly:
+
+Use error boundaries for critical UI sections.
+
+Provide user-friendly error messages.
+
+Log errors to a central logging mechanism if available.
+
+Avoid silent failures.
+
+Handle network timeouts and retries where appropriate.
+
+Internationalization (i18n) Readiness
+
+Design UI to support future localization:
+
+Avoid hardcoding text directly in components when feasible.
+
+Keep strings externalizable.
+
+Support RTL layouts where possible.
+
+Use locale-aware formatting for dates, numbers, and currencies.
+
+UX Consistency & Design Alignment
+
+Maintain a cohesive product experience:
+
+Follow existing design system, spacing, typography, and color tokens.
+
+Avoid introducing new visual patterns without justification.
+
+Ensure interactive elements have clear affordances.
+
+Maintain consistent loading indicators and feedback patterns.
+
+Avoid layout shifts during async operations.
+
+Data Fetching Best Practices
+
+Ensure efficient and predictable API usage:
+
+Debounce user-triggered queries (e.g., search inputs).
+
+Cancel stale requests when components unmount.
+
+Avoid duplicate requests for identical data.
+
+Cache responses when appropriate.
+
+Respect API rate limits and cost implications.
+
+Documentation Requirements
+
+AI-generated changes should be understandable to human engineers:
+
+Add concise comments for non-obvious logic.
+
+Update README or relevant docs when introducing new features.
+
+Document public interfaces and props.
+
+Include usage examples for reusable components when helpful.
+
+Review Readiness Checklist
+
+Before considering a task complete, verify:
+
+Code compiles without TypeScript errors.
+
+Tests pass locally.
+
+Accessibility requirements are met.
+
+No console errors or warnings.
+
+No unused imports or variables.
+
+Performance impact is reasonable.
+
+Security considerations have been addressed.
