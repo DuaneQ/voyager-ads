@@ -1,0 +1,11 @@
+.modal-backdrop { position: fixed; inset: 0; background: rgba(2,6,23,0.55); display:flex; align-items:center; justify-content:center; z-index:1000 }
+.modal { background: #fff; border-radius: 10px; width: min(720px, 94%); max-height: 86vh; overflow:auto; box-shadow: 0 12px 40px rgba(2,6,23,0.35); padding: 1rem 1.25rem }
+.modal:focus { outline: none }
+.modal-header { display:flex; align-items:center; justify-content:space-between; gap:1rem }
+.modal-header h2 { margin:0; font-size:1.125rem }
+.modal-close { background:transparent; border:0; font-size:1.125rem; cursor:pointer }
+.modal-body { margin-top:0.75rem; color: rgba(33,53,71,0.9); line-height:1.5 }
+
+@media (prefers-reduced-motion: reduce) {
+  .modal { transition: none }
+}

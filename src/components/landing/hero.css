@@ -1,0 +1,4 @@
+.hero-landing { background: #ffffff; border-radius: 12px; border: 1px solid rgba(33,53,71,0.04) }
+.hero-copy h1 { color: var(--hero-title, #0f172a) }
+.hero-actions { margin-top: 1rem }
+.hero-actions .btn-primary { margin-right: 0.5rem }

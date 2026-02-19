@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../voyager-RN"
+		},
+		{
+			"path": "../voyager-pwa"
+		}
+	],
+	"settings": {}
+}
