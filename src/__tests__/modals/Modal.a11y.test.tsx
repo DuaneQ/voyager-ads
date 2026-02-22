@@ -1,19 +1,19 @@
 // @ts-nocheck
-import React from 'react'
-import { render } from '../../testUtils/test-utils'
+import { render, screen } from '../../testUtils/test-utils'
 import Modal from '../../components/common/Modal'
 
 describe('Modal accessibility', () => {
   it('has role dialog and aria-modal when open', () => {
     const onClose = vi.fn()
-    const { container } = render(
+    render(
       <Modal open={true} title="Accessibility Test" onClose={onClose}>
         <div>Content</div>
       </Modal>
     )
 
-    const dialog = container.querySelector('.modal[role="dialog"]')
+    // MUI Dialog renders into a portal — use screen, not container
+    const dialog = screen.getByRole('dialog')
     expect(dialog).toBeTruthy()
-    expect(dialog?.getAttribute('aria-modal')).toBe('true')
+    expect(dialog.getAttribute('aria-modal')).toBe('true')
   })
 })

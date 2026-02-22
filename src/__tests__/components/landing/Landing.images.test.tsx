@@ -1,5 +1,4 @@
 // @ts-nocheck
-import React from 'react'
 import { render } from '../../../testUtils/test-utils'
 import Landing from '../../../pages/Landing'
 

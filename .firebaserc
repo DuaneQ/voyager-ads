@@ -1,0 +1,18 @@
+{
+  "projects": {
+    "default": "mundo1-dev",
+    "production": "mundo1-1"
+  },
+  "targets": {
+    "mundo1-dev": {
+      "hosting": {
+        "travalpass-ads": ["travalpass-ads-dev"]
+      }
+    },
+    "mundo1-1": {
+      "hosting": {
+        "travalpass-ads": ["travalpass-ads"]
+      }
+    }
+  }
+}

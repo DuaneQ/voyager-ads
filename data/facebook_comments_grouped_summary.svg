@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="820" height="300" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .title { font: 18px sans-serif; font-weight: 700; }
+    .label { font: 14px sans-serif; fill: #222; }
+    .value { font: 13px sans-serif; fill: #111; }
+    .percent { font: 12px sans-serif; fill: #111; }
+  </style>
+  <text x="20" y="28" class="title">Consolidated comment themes (N=26)</text>
+
+  <!-- Scale: max = 7 -> bar max width = 520 -->
+  <!-- success=7, offers=6, problems=5, solo=5, safety=3 -->
+
+  <!-- Success -->
+  <text x="20" y="72" class="label">Success</text>
+  <rect x="200" y="58" width="520" height="28" rx="6" fill="#2e7d32" />
+  <text x="740" y="76" class="value">7</text>
+  <text x="770" y="76" class="percent">26.9%</text>
+
+  <!-- Offers & Channels -->
+  <text x="20" y="116" class="label">Offers & Channels</text>
+  <rect x="200" y="102" width="447" height="28" rx="6" fill="#1565c0" />
+  <text x="740" y="120" class="value">6</text>
+  <text x="770" y="120" class="percent">23.1%</text>
+
+  <!-- Problems -->
+  <text x="20" y="160" class="label">Problems (no-shows / hookups / scams / noise)</text>
+  <rect x="200" y="146" width="373" height="28" rx="6" fill="#c62828" />
+  <text x="740" y="164" class="value">5</text>
+  <text x="770" y="164" class="percent">19.2%</text>
+
+  <!-- Solo & Preferences -->
+  <text x="20" y="204" class="label">Solo & Preferences</text>
+  <rect x="200" y="190" width="373" height="28" rx="6" fill="#6a1b9a" />
+  <text x="740" y="208" class="value">5</text>
+  <text x="770" y="208" class="percent">19.2%</text>
+
+  <!-- Safety & Trust -->
+  <text x="20" y="248" class="label">Safety & Trust</text>
+  <rect x="200" y="234" width="224" height="28" rx="6" fill="#ff8f00" />
+  <text x="740" y="252" class="value">3</text>
+  <text x="770" y="252" class="percent">11.5%</text>
+
+  <!-- Footer note -->
+  <text x="20" y="284" class="percent">Groups were consolidated from cleaned theme tags in facebook_comments_cleaned.csv</text>
+</svg>

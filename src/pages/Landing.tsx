@@ -3,6 +3,12 @@ import '../App.css'
 import Nav from '../components/common/Nav'
 import Hero from '../components/landing/Hero'
 import Modal from '../components/common/Modal'
+import List from '@mui/material/List'
+import ListItemButton from '@mui/material/ListItemButton'
+import ListItemText from '@mui/material/ListItemText'
+import ChevronRightIcon from '@mui/icons-material/ChevronRight'
+import Typography from '@mui/material/Typography'
+import Box from '@mui/material/Box'
 
 const Landing: React.FC = () => {
   const [open, setOpen] = useState<null | 'how' | 'connect'>(null)
@@ -105,13 +111,19 @@ const Landing: React.FC = () => {
         </div>
       </section>
 
-      <section className="learn-more" aria-label="learn more">
-        <h3>Questions?</h3>
-        <div className="faq-list">
-          <button className="faq-item" onClick={() => setOpen('how')}>How do TravalPass Ads work?</button>
-          <button className="faq-item" onClick={() => setOpen('connect')}>How can TravalPass Ads help my business?</button>
-        </div>
-      </section>
+      <Box component="section" aria-label="learn more" sx={{ maxWidth: 720, mx: 'auto', px: 2, py: 3 }}>
+        <Typography variant="h3" align="center" gutterBottom>Questions?</Typography>
+        <List disablePadding>
+          <ListItemButton divider onClick={() => setOpen('how')}>
+            <ListItemText primary="How do TravalPass Ads work?" />
+            <ChevronRightIcon color="action" />
+          </ListItemButton>
+          <ListItemButton onClick={() => setOpen('connect')}>
+            <ListItemText primary="How can TravalPass Ads help my business?" />
+            <ChevronRightIcon color="action" />
+          </ListItemButton>
+        </List>
+      </Box>
 
       <Modal open={open === 'how'} title="How do TravalPass Ads work?" onClose={() => setOpen(null)}>
         <p>

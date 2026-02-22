@@ -19,55 +19,51 @@ If you are developing a production application, we recommend updating the config
 export default defineConfig([
   globalIgnores(['dist']),
   {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+    # TravalPass Ads — Self-serve Advertising Portal
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+    This repository contains the TravalPass Ads frontend — a self-serve portal where advertisers create and manage campaigns that run on the TravalPass consumer products (for example the React Native app located at /Users/icebergslim/projects/voyager-RN in your local environment).
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+    Overview
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+    - TravalPass is a travel planning platform that helps users discover, plan, and book trips. Core user-facing surfaces include itinerary generation, a discovery feed (cards & video), and personalized AI-generated itineraries.
+    - The Ads portal (this repo) is a lightweight, self-serve UI where advertisers build campaigns, upload creatives, choose placements (Itinerary Feed, Video Feed, AI Itinerary Placements), set budgets, and review performance.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+    How the Ads portal fits into the TravalPass ecosystem
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+    - Placement: advertisers create creatives and targeting in this portal. The consumer app (`voyager-RN`) consumes ad metadata and creatives via the ad delivery APIs and renders them inside itineraries, feeds, and AI-generated plans.
+    - Measurement: the consumer app reports impressions, clicks, and conversions back to the ad backend. The Ads portal surfaces aggregated metrics and status (live, paused, draft).
+    - Integration points: this repo assumes an ad backend and storage for creatives, plus endpoints that the consumer app hits to fetch ads for a specific user context (destination, dates, itinerary id).
+
+    Key products supported by this portal
+
+    - Itinerary Feed — Card-style ads shown in itinerary and discovery lists (image + headline + price/offer + CTA). Best for direct conversions and time-sensitive promotions.
+    - Video Feed — Short-form or in-stream video inventory for awareness and inspiration. Measured by views and view-through conversions.
+    - AI Itinerary Placement — Native recommendations inserted inside AI-generated itineraries. High-intent placement with premium pricing; these items must be clearly labeled as sponsored.
+
+    Local development
+
+    - Start the dev server:
+    ```bash
+    npm install
+    npm run dev
+    ```
+    - Landing page: http://localhost:5173/
+    - Products page: http://localhost:5173/products
+
+    Testing
+
+    - Run the unit tests:
+    ```bash
+    npm test
+    ```
+
+    Notes for integrators
+
+    - This repo is the advertiser-facing UI only; production ad serving requires a backend (ad registry, bidding/auction logic, creative storage, reporting). Provide the backend endpoints and credentials via environment variables when wiring up to a real system.
+    - For local end-to-end testing, point the consumer app (`voyager-RN`) at a development ad backend or mocked endpoints that return ad payloads matching the portal's creative schema.
+
+    Contributing
+
+    - Follow the repo's TypeScript and linting guidelines. Keep UI changes accessible (ARIA roles, keyboard focus, visible focus states) and test critical flows.
+
+    If you want, I can add example API schemas and a small mock server to simulate ad delivery for local end-to-end testing.

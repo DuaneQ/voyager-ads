@@ -1,5 +1,4 @@
 import React from 'react'
-import ResponsiveImage from '../common/ResponsiveImage'
 import Carousel from './Carousel'
 import './hero.css'
 import './carousel.css'
@@ -8,12 +7,10 @@ import RotatingHeadline from './RotatingHeadline'
 // Use runtime-resolved URLs for assets (avoids static import resolution issues)
 
 type Props = {
-  title?: string
   subtitle?: string
 }
 
 const Hero: React.FC<Props> = ({
-  title = 'Reach travelers when they plan trips',
   subtitle = 'Flexible, privacy-first advertising to connect with high-intent travelers.'
 }) => {
   return (

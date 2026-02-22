@@ -254,6 +254,6 @@
 .hero-art { text-align: center }
 
 @media (min-width: 880px) {
-  .hero-grid { grid-template-columns: 1fr 520px }
+  .hero-grid { grid-template-columns: 1fr }
   .hero-copy { padding-right: 1rem }
 }
