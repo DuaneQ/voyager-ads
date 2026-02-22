@@ -13,6 +13,9 @@
 // | Itinerary feed       | CPM   | $25            |
 // | Promoted itineraries | CPC   | $2.25          |
 
+/** Billing models supported across all placements. */
+export type PricingModel = 'CPC' | 'CPM' | 'CPV'
+
 export const PRICING_SIMPLE = [
   {
     key: 'itineraryFeed',
