@@ -1,5 +1,4 @@
 // @ts-nocheck
-import React from 'react'
 import { render, fireEvent } from '../../testUtils/test-utils'
 import Modal from '../../components/common/Modal'
 

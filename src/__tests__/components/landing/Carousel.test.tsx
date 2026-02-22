@@ -1,4 +1,3 @@
-import React from 'react'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent, act } from '../../../testUtils/test-utils'
 import Carousel from '../../../components/landing/Carousel'
@@ -62,7 +61,7 @@ describe('Carousel', () => {
 
   it('does NOT start an interval when there is only one slide', () => {
     vi.useFakeTimers()
-    const spy = vi.spyOn(global, 'setInterval')
+    const spy = vi.spyOn(globalThis, 'setInterval')
     render(<Carousel images={[SLIDES[0]]} interval={1000} />)
     // setInterval should not be called for single-image carousels
     expect(spy).not.toHaveBeenCalled()

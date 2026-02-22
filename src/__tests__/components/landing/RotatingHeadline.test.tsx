@@ -1,4 +1,3 @@
-import React from 'react'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, act } from '../../../testUtils/test-utils'
 import RotatingHeadline from '../../../components/landing/RotatingHeadline'
@@ -47,7 +46,7 @@ describe('RotatingHeadline', () => {
 
   it('does NOT start an interval when there is only one phrase', () => {
     vi.useFakeTimers()
-    const spy = vi.spyOn(global, 'setInterval')
+    const spy = vi.spyOn(globalThis, 'setInterval')
     render(<RotatingHeadline phrases={['Only phrase']} />)
     expect(spy).not.toHaveBeenCalled()
     spy.mockRestore()
