@@ -1,0 +1,20 @@
+.products-section { padding: 2rem 1rem; max-width: 1100px; margin: 0 auto; }
+.products-title { font-size: 1.6rem; margin: 0 0 1rem 0; text-align: center }
+.products-grid { display: grid; gap: 1rem; grid-template-columns: 1fr; margin-bottom: 1.25rem }
+.product-card { background: #fff; border-radius: 12px; padding: 1rem; box-shadow: 0 6px 20px rgba(16,24,40,0.06); text-align: left }
+.product-card h3 { margin-top: 0 }
+.product-card .muted { color: rgba(33,53,71,0.7); margin-top: 0.25rem }
+.product-card ul { margin: 0.5rem 0 0 1rem }
+.price { margin-top: 0.75rem; font-weight: 600; color: #1a73e8 }
+.price-btn { background: transparent; border: 0; color: #1a73e8; font-weight: 600; cursor: pointer; padding: 0; border-radius: 6px }
+.price-btn:focus { outline: 3px solid rgba(26,115,232,0.2); }
+
+.specs-title { margin-top: 1.5rem }
+.specs-grid { display: grid; gap: 1rem; grid-template-columns: 1fr }
+.spec-card { background: #fff; border-radius: 12px; padding: 1rem; box-shadow: 0 6px 20px rgba(16,24,40,0.06); text-align: left }
+.spec-card h4 { margin-top: 0 }
+
+@media (min-width: 720px) {
+  .products-grid { grid-template-columns: repeat(3, 1fr) }
+  .specs-grid { grid-template-columns: repeat(3, 1fr) }
+}
