@@ -5,7 +5,14 @@
  * Every test is authored so that running in any timezone should produce the same result.
  */
 import { describe, it, expect } from 'vitest'
-import { formatDateLocal, todayLocalDate, parseLocalDate, displayDate } from '../../utils/dateUtils'
+import {
+  formatDateLocal,
+  todayLocalDate,
+  parseLocalDate,
+  displayDate,
+  isPastDate,
+  validateTravelDates,
+} from '../../utils/dateUtils'
 
 // ─── formatDateLocal ──────────────────────────────────────────────────────────
 
@@ -135,5 +142,76 @@ describe('displayDate', () => {
 
   it('returns — for a non-string non-object value', () => {
     expect(displayDate(12345)).toBe('—')
+  })
+})
+
+// ─── isPastDate ───────────────────────────────────────────────────────────────
+
+describe('isPastDate', () => {
+  it('returns false for today', () => {
+    expect(isPastDate(todayLocalDate())).toBe(false)
+  })
+
+  it('returns false for a future date', () => {
+    const future = formatDateLocal(new Date(new Date().getFullYear() + 1, 5, 15))
+    expect(isPastDate(future)).toBe(false)
+  })
+
+  it('returns true for a date clearly in the past', () => {
+    expect(isPastDate('2020-01-01')).toBe(true)
+  })
+
+  it('returns false for an empty string', () => {
+    expect(isPastDate('')).toBe(false)
+  })
+
+  it('returns false for an invalid date string', () => {
+    expect(isPastDate('not-a-date')).toBe(false)
+  })
+})
+
+// ─── validateTravelDates ──────────────────────────────────────────────────────
+
+describe('validateTravelDates', () => {
+  const future1 = formatDateLocal(new Date(new Date().getFullYear() + 1, 2, 10))
+  const future2 = formatDateLocal(new Date(new Date().getFullYear() + 1, 2, 20))
+
+  it('returns no errors for two valid future dates where start < end', () => {
+    expect(validateTravelDates(future1, future2)).toEqual({ startError: null, endError: null })
+  })
+
+  it('returns no errors when both dates are today', () => {
+    const today = todayLocalDate()
+    expect(validateTravelDates(today, today)).toEqual({ startError: null, endError: null })
+  })
+
+  it('returns no errors when only startDate is provided', () => {
+    expect(validateTravelDates(future1, '')).toEqual({ startError: null, endError: null })
+  })
+
+  it('returns no errors when both dates are empty', () => {
+    expect(validateTravelDates('', '')).toEqual({ startError: null, endError: null })
+  })
+
+  it('flags a past start date', () => {
+    const { startError, endError } = validateTravelDates('2020-01-01', future2)
+    expect(startError).toMatch(/past/i)
+    expect(endError).toBeNull()
+  })
+
+  it('flags a past end date', () => {
+    const { startError, endError } = validateTravelDates(future1, '2020-01-01')
+    expect(startError).toBeNull()
+    expect(endError).toMatch(/past/i)
+  })
+
+  it('flags end before start when both are in the future', () => {
+    const { startError, endError } = validateTravelDates(future2, future1)
+    expect(startError).toBeNull()
+    expect(endError).toMatch(/on or after/i)
+  })
+
+  it('does not flag same-day start and end as an error', () => {
+    expect(validateTravelDates(future1, future1)).toEqual({ startError: null, endError: null })
   })
 })

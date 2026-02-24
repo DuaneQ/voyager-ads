@@ -27,23 +27,32 @@ describe('StepCreative', () => {
     expect(screen.getByLabelText(/Call to action/i)).toBeInTheDocument()
   })
 
-  it('shows image-only message for itinerary_feed', () => {
-    render(<StepCreative draft={{ ...EMPTY_DRAFT, placement: 'itinerary_feed' }} patch={makePatch()} />)
-    expect(screen.getByText(/video is not supported for this placement/i)).toBeInTheDocument()
-  })
-
-  it('shows creative type selector for video_feed', () => {
+  it('shows video creative type info for video_feed', () => {
     render(<StepCreative draft={{ ...EMPTY_DRAFT, placement: 'video_feed' }} patch={makePatch()} />)
-    expect(screen.getByLabelText(/Creative type/i)).toBeInTheDocument()
+    expect(screen.getByText(/video feed requires a video asset/i)).toBeInTheDocument()
   })
 
-  it('shows spec text for video_feed image', () => {
-    render(<StepCreative draft={{ ...EMPTY_DRAFT, placement: 'video_feed', creativeType: 'image' }} patch={makePatch()} />)
-    expect(screen.getByText(/Square or vertical image/i)).toBeInTheDocument()
+  it('shows image creative type info for itinerary_feed', () => {
+    render(<StepCreative draft={{ ...EMPTY_DRAFT, placement: 'itinerary_feed' }} patch={makePatch()} />)
+    expect(screen.getByText(/image required for this placement/i)).toBeInTheDocument()
   })
 
-  it('shows spec text for video_feed video', () => {
-    render(<StepCreative draft={{ ...EMPTY_DRAFT, placement: 'video_feed', creativeType: 'video' }} patch={makePatch()} />)
+  it('shows image creative type info for ai_slot', () => {
+    render(<StepCreative draft={{ ...EMPTY_DRAFT, placement: 'ai_slot' }} patch={makePatch()} />)
+    expect(screen.getByText(/image required for this placement/i)).toBeInTheDocument()
+  })
+
+  it('never renders a creative type selector', () => {
+    const placements = ['video_feed', 'itinerary_feed', 'ai_slot'] as const
+    for (const placement of placements) {
+      const { unmount } = render(<StepCreative draft={{ ...EMPTY_DRAFT, placement }} patch={makePatch()} />)
+      expect(screen.queryByLabelText(/Creative type/i)).not.toBeInTheDocument()
+      unmount()
+    }
+  })
+
+  it('shows spec text for video_feed', () => {
+    render(<StepCreative draft={{ ...EMPTY_DRAFT, placement: 'video_feed' }} patch={makePatch()} />)
     expect(screen.getByText(/Vertical video \(portrait\)/i)).toBeInTheDocument()
   })
 
@@ -76,6 +85,16 @@ describe('StepCreative', () => {
     const file = new File(['x'], 'ad.jpg', { type: 'image/jpeg' })
     fireEvent.change(fileInput, { target: { files: [file] } })
     expect(patch).toHaveBeenCalledWith('assetFile', file)
+  })
+
+  it('shows "Upload a video to preview" placeholder for video_feed', () => {
+    render(<StepCreative draft={{ ...EMPTY_DRAFT, placement: 'video_feed' }} patch={makePatch()} />)
+    expect(screen.getByText(/Upload a video to preview/i)).toBeInTheDocument()
+  })
+
+  it('shows "Upload an image to preview" placeholder for ai_slot', () => {
+    render(<StepCreative draft={{ ...EMPTY_DRAFT, placement: 'ai_slot' }} patch={makePatch()} />)
+    expect(screen.getByText(/Upload an image to preview/i)).toBeInTheDocument()
   })
 
   it('shows the ItineraryFeedAdPreview for itinerary_feed placement', () => {

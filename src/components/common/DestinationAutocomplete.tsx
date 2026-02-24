@@ -27,7 +27,7 @@ import React, {
 import MuiAutocomplete from '@mui/material/Autocomplete'
 import CircularProgress from '@mui/material/CircularProgress'
 import TextField from '@mui/material/TextField'
-import { Loader } from '@googlemaps/js-api-loader'
+import { setOptions, importLibrary } from '@googlemaps/js-api-loader'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -47,22 +47,29 @@ export interface DestinationAutocompleteProps {
   placeholder?: string
 }
 
-// ─── Singleton loader (one SDK load per page) ─────────────────────────────────
+// ─── Singleton (one options-set + one library load per page) ─────────────────
 
-let _loader: Loader | null = null
-let _loadPromise: Promise<any> | null = null
+let _optionsSet = false
+let _placesPromise: Promise<any> | null = null
 
-function ensureLoaded(): Promise<typeof google> | null {
+function ensurePlaces(): Promise<any> | null {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined
   if (!apiKey) return null
 
-  if (!_loader) {
-    _loader = new Loader({ apiKey, version: 'weekly', libraries: ['places'] })
+  if (!_optionsSet) {
+    setOptions({ key: apiKey, version: 'weekly' })
+    _optionsSet = true
   }
-  if (!_loadPromise) {
-    _loadPromise = _loader.load()
+  if (!_placesPromise) {
+    _placesPromise = importLibrary('places')
   }
-  return _loadPromise
+  return _placesPromise
+}
+
+/** Resets the module-level SDK singleton — for testing only. */
+export function __resetGoogleMapsLoader__() {
+  _optionsSet = false
+  _placesPromise = null
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -88,13 +95,13 @@ const DestinationAutocomplete: React.FC<DestinationAutocompleteProps> = ({
     setInputValue(value)
   }, [value])
 
-  // Load the Google Maps SDK once
+  // Load the Google Maps Places library once
   useEffect(() => {
-    const promise = ensureLoaded()
+    const promise = ensurePlaces()
     if (!promise) return // no API key — degraded mode
     promise
-      .then(() => {
-        serviceRef.current = new google.maps.places.AutocompleteService()
+      .then((places: any) => {
+        serviceRef.current = new places.AutocompleteService()
         setSdkReady(true)
       })
       .catch(err => {
@@ -116,7 +123,7 @@ const DestinationAutocomplete: React.FC<DestinationAutocompleteProps> = ({
         (predictions: any, status: any) => {
           setLoading(false)
           if (
-            status === google.maps.places.PlacesServiceStatus.OK &&
+            status === 'OK' &&
             predictions
           ) {
             setOptions(
@@ -152,10 +159,7 @@ const DestinationAutocomplete: React.FC<DestinationAutocompleteProps> = ({
           setInputValue(e.target.value)
           onSelect(e.target.value, '')
         }}
-        helperText={
-          helperText ??
-          'Add VITE_GOOGLE_MAPS_API_KEY to .env to enable location autocomplete'
-        }
+        helperText="⚠️ Autocomplete disabled — add VITE_GOOGLE_MAPS_API_KEY to .env.local to enable city suggestions"
         fullWidth
       />
     )

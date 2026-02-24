@@ -98,6 +98,59 @@ export function parseLocalDate(dateString: string): Date {
  * @param raw - The raw value stored in Firestore
  * @returns A human-readable date string, or "—" for missing/invalid values.
  */
+// ─── VALIDATION helpers ───────────────────────────────────────────────────────
+
+/**
+ * Returns true if a YYYY-MM-DD date string represents a day strictly before
+ * today in the local timezone.
+ *
+ * String comparison works correctly here because both values are in YYYY-MM-DD
+ * format (lexicographic order equals chronological order for ISO dates).
+ */
+export function isPastDate(dateStr: string): boolean {
+  if (!dateStr) return false
+  const parsed = parseLocalDate(dateStr)
+  if (isNaN(parsed.getTime())) return false
+  // Compare as YYYY-MM-DD strings — safe because the format is fixed-width and
+  // lexicographic order is identical to chronological order for ISO dates.
+  return dateStr < todayLocalDate()
+}
+
+export interface TravelDateValidation {
+  startError: string | null
+  endError: string | null
+}
+
+/**
+ * Validates a pair of travel date strings (YYYY-MM-DD).
+ *
+ * Rules:
+ *  - Neither date may be in the past.
+ *  - endDate, when provided, must be on or after startDate.
+ *
+ * Returns `null` for each field that has no error.
+ */
+export function validateTravelDates(
+  startDate: string,
+  endDate: string
+): TravelDateValidation {
+  const startError =
+    startDate && isPastDate(startDate) ? 'Start date cannot be in the past' : null
+
+  let endError: string | null = null
+  if (endDate) {
+    if (isPastDate(endDate)) {
+      endError = 'End date cannot be in the past'
+    } else if (startDate && endDate < startDate) {
+      endError = 'End date must be on or after the start date'
+    }
+  }
+
+  return { startError, endError }
+}
+
+// ─── DISPLAY helper ───────────────────────────────────────────────────────────
+
 export function displayDate(raw: unknown): string {
   if (!raw) return '—'
 

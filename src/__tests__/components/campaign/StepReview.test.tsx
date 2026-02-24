@@ -69,7 +69,8 @@ describe('StepReview', () => {
 
   it('renders the primary text', () => {
     render(<StepReview draft={fullDraft} patch={vi.fn()} />)
-    expect(screen.getByText('Discover the best beaches')).toBeInTheDocument()
+    // primaryText appears in both the Creative section detail row and the ad preview
+    expect(screen.getAllByText('Discover the best beaches').length).toBeGreaterThanOrEqual(1)
   })
 
   it('renders the audience name', () => {

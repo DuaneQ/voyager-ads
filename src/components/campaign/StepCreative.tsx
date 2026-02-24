@@ -14,30 +14,34 @@ interface Props {
 
 const CTA_OPTIONS = ['Learn More', 'Book Now', 'Sign Up', 'Visit Shop']
 
-const SPECS: Record<string, Record<CreativeType, string>> = {
-  video_feed: {
-    image: 'Square or vertical image · JPG or PNG · max 10 MB',
-    video: 'Vertical video (portrait) · MP4 · 15–60 seconds · max 50 MB',
-  },
-  itinerary_feed: {
-    image: 'Square image · JPG or PNG · max 10 MB',
-    video: 'Square video · MP4 · max 50 MB',
-  },
-  ai_slot: {
-    image: 'Landscape image · JPG or PNG · max 5 MB',
-    video: 'Video not supported for AI Slots — use an image',
-  },
+/** The creative type is fully determined by placement — no user choice needed. */
+const PLACEMENT_TYPE: Record<string, CreativeType> = {
+  video_feed: 'video',
+  itinerary_feed: 'image',
+  ai_slot: 'image',
 }
 
-/** Placements that only accept image creatives */
-const IMAGE_ONLY_PLACEMENTS = new Set(['itinerary_feed', 'ai_slot'])
+const SPECS: Record<string, string> = {
+  video_feed: 'Vertical video (portrait) · MP4 · 15–60 seconds · max 50 MB',
+  itinerary_feed: 'Square image · JPG or PNG · max 10 MB',
+  ai_slot: 'Landscape image · JPG or PNG · max 5 MB',
+}
+
+const PLACEMENT_LABELS: Record<string, string> = {
+  video_feed: 'Video',
+  itinerary_feed: 'Image',
+  ai_slot: 'Image',
+}
 
 const StepCreative: React.FC<Props> = ({ draft, patch }) => {
   const fileRef = useRef<HTMLInputElement>(null)
-  const isImageOnly = IMAGE_ONLY_PLACEMENTS.has(draft.placement)
-  // Automatically enforce image when placement requires it
-  const effectiveType: CreativeType = isImageOnly ? 'image' : draft.creativeType
-  const specText = SPECS[draft.placement]?.[effectiveType] ?? ''
+  const creativeType = PLACEMENT_TYPE[draft.placement] ?? 'image'
+  const specText = SPECS[draft.placement] ?? ''
+
+  // Keep draft.creativeType in sync with placement (downstream steps may read it)
+  useEffect(() => {
+    if (draft.creativeType !== creativeType) patch('creativeType', creativeType)
+  }, [draft.placement]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Revoke previous object URL to avoid memory leaks
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -65,21 +69,13 @@ const StepCreative: React.FC<Props> = ({ draft, patch }) => {
         onChange={e => patch('creativeName', e.target.value)}
       />
 
-      {isImageOnly ? (
-        <Typography variant="body2" color="text.secondary">
-          Creative type: <strong>Image</strong> — video is not supported for this placement.
-        </Typography>
-      ) : (
-        <TextField
-          select
-          label="Creative type"
-          value={draft.creativeType}
-          onChange={e => patch('creativeType', e.target.value as CreativeType)}
-        >
-          <MenuItem value="image">Image</MenuItem>
-          <MenuItem value="video">Video</MenuItem>
-        </TextField>
-      )}
+      {/* Creative type is fixed by placement — no selector needed */}
+      <Typography variant="body2" color="text.secondary">
+        Creative type: <strong>{PLACEMENT_LABELS[draft.placement]}</strong>
+        {creativeType === 'video'
+          ? ' — video feed requires a video asset'
+          : ' — image required for this placement'}
+      </Typography>
 
       {specText && (
         <Typography variant="caption" color="text.secondary">{specText}</Typography>
@@ -89,7 +85,7 @@ const StepCreative: React.FC<Props> = ({ draft, patch }) => {
         <input
           ref={fileRef}
           type="file"
-          accept={effectiveType === 'video' ? 'video/*' : 'image/*'}
+          accept={creativeType === 'video' ? 'video/*' : 'image/*'}
           style={{ display: 'none' }}
           aria-label="Upload creative asset"
           onChange={e => {
@@ -110,14 +106,17 @@ const StepCreative: React.FC<Props> = ({ draft, patch }) => {
       {/* ── Ad preview ── */}
       {draft.placement === 'itinerary_feed' ? (
         /* Full card preview — mirrors SponsoredItineraryCard from the mobile app */
-        <ItineraryFeedAdPreview
-          imageUrl={previewUrl}
-          destination={draft.targetDestination || draft.location}
-          primaryText={draft.primaryText}
-          cta={draft.cta}
-        />
-      ) : previewUrl && effectiveType === 'image' ? (
-        /* Simple aspect-ratio frame for video_feed / ai_slot */
+        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+          <ItineraryFeedAdPreview
+            imageUrl={previewUrl}
+            destination={draft.targetDestination || draft.location}
+            primaryText={draft.primaryText}
+            cta={draft.cta}
+          />
+        </Box>
+      ) : previewUrl ? (
+        /* Aspect-ratio frame for video_feed / ai_slot */
+        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
         <Box
           sx={{
             aspectRatio: previewAspect,
@@ -130,12 +129,25 @@ const StepCreative: React.FC<Props> = ({ draft, patch }) => {
             position: 'relative',
           }}
         >
-          <Box
-            component="img"
-            src={previewUrl}
-            alt="Asset preview"
-            sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
-          />
+          {creativeType === 'video' ? (
+            <Box
+              component="video"
+              src={previewUrl}
+              muted
+              loop
+              autoPlay
+              playsInline
+              aria-label="Video asset preview"
+              sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            />
+          ) : (
+            <Box
+              component="img"
+              src={previewUrl}
+              alt="Asset preview"
+              sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+          )}
           <Box
             sx={{
               position: 'absolute',
@@ -153,23 +165,29 @@ const StepCreative: React.FC<Props> = ({ draft, patch }) => {
             Sponsored
           </Box>
         </Box>
-      ) : !previewUrl && (draft.placement as string) !== 'itinerary_feed' ? (
-        <Box
-          sx={{
-            aspectRatio: previewAspect,
-            maxWidth: draft.placement === 'video_feed' ? 180 : 320,
-            border: '1px dashed',
-            borderColor: 'divider',
-            borderRadius: 2,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-          aria-label={`${previewAspect} preview placeholder`}
-        >
-          <Typography variant="caption" color="text.secondary">Upload an image to preview</Typography>
         </Box>
-      ) : null}
+      ) : (
+        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+          <Box
+            sx={{
+              aspectRatio: previewAspect,
+              maxWidth: draft.placement === 'video_feed' ? 180 : 320,
+              width: '100%',
+              border: '1px dashed',
+              borderColor: 'divider',
+              borderRadius: 2,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            aria-label={`${previewAspect} preview placeholder`}
+          >
+            <Typography variant="caption" color="text.secondary">
+              {creativeType === 'video' ? 'Upload a video to preview' : 'Upload an image to preview'}
+            </Typography>
+          </Box>
+        </Box>
+      )}
 
       <TextField
         label="Primary text"

@@ -8,6 +8,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { type CampaignDraft } from '../../types/campaign'
 import DestinationAutocomplete from '../common/DestinationAutocomplete'
+import { todayLocalDate, validateTravelDates } from '../../utils/dateUtils'
 
 interface Props {
   draft: CampaignDraft
@@ -17,8 +18,26 @@ interface Props {
 const AGES = ['18', '25', '35', '45', '55']
 const AGES_TO = ['24', '34', '44', '54', '65+']
 
+/** Matches the gender options on itinerary documents in Firestore. '' = no filter. */
+const GENDER_OPTIONS: { label: string; value: string }[] = [
+  { label: 'All genders', value: '' },
+  { label: 'Male', value: 'Male' },
+  { label: 'Female', value: 'Female' },
+  { label: 'Non-binary', value: 'Non-binary' },
+  { label: 'Transgender Woman', value: 'Transgender Woman' },
+  { label: 'Transgender Man', value: 'Transgender Man' },
+  { label: 'Gender Neutral', value: 'Gender Neutral' },
+  { label: 'Prefer not to say', value: 'Prefer not to say' },
+  { label: 'No Preference', value: 'No Preference' },
+]
+
 const StepTargeting: React.FC<Props> = ({ draft, patch }) => {
   const isItineraryFeed = draft.placement === 'itinerary_feed'
+  const today = todayLocalDate()
+  const travelDateErrors = validateTravelDates(
+    draft.targetTravelStartDate,
+    draft.targetTravelEndDate
+  )
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -61,19 +80,22 @@ const StepTargeting: React.FC<Props> = ({ draft, patch }) => {
               type="date"
               sx={{ flex: 1, minWidth: 160 }}
               InputLabelProps={{ shrink: true }}
+              inputProps={{ min: today }}
               value={draft.targetTravelStartDate}
               onChange={e => patch('targetTravelStartDate', e.target.value)}
-              helperText="Show to users traveling from this date"
+              error={!!travelDateErrors.startError}
+              helperText={travelDateErrors.startError ?? 'Show to users traveling from this date'}
             />
             <TextField
               label="Travel end date"
               type="date"
               sx={{ flex: 1, minWidth: 160 }}
               InputLabelProps={{ shrink: true }}
-              inputProps={{ min: draft.targetTravelStartDate }}
+              inputProps={{ min: draft.targetTravelStartDate || today }}
               value={draft.targetTravelEndDate}
               onChange={e => patch('targetTravelEndDate', e.target.value)}
-              helperText="Show to users traveling until this date"
+              error={!!travelDateErrors.endError}
+              helperText={travelDateErrors.endError ?? 'Show to users traveling until this date'}
             />
           </Box>
 
@@ -86,6 +108,18 @@ const StepTargeting: React.FC<Props> = ({ draft, patch }) => {
             }
             label="Strict destination match — only show to users whose itinerary destination exactly matches"
           />
+
+          <TextField
+            select
+            label="Itinerary gender preference"
+            value={draft.targetGender}
+            onChange={e => patch('targetGender', e.target.value)}
+            helperText="Target users whose itinerary gender preference matches"
+          >
+            {GENDER_OPTIONS.map(opt => (
+              <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+            ))}
+          </TextField>
 
           <Divider />
           <Typography variant="caption" color="text.secondary" fontWeight={500}>

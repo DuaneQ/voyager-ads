@@ -130,4 +130,22 @@ describe('StepTargeting', () => {
     fireEvent.click(screen.getByRole('option', { name: '44' }))
     expect(patch).toHaveBeenCalledWith('ageTo', '44')
   })
+
+  it('renders the itinerary gender preference selector for itinerary_feed', () => {
+    render(<StepTargeting draft={{ ...EMPTY_DRAFT, placement: 'itinerary_feed' }} patch={makePatch()} />)
+    expect(screen.getByLabelText(/Itinerary gender preference/i)).toBeInTheDocument()
+  })
+
+  it('does NOT render the gender selector for non-itinerary-feed placements', () => {
+    render(<StepTargeting draft={{ ...EMPTY_DRAFT, placement: 'video_feed' }} patch={makePatch()} />)
+    expect(screen.queryByLabelText(/Itinerary gender preference/i)).not.toBeInTheDocument()
+  })
+
+  it('calls patch when gender preference changes (itinerary_feed)', () => {
+    const patch = makePatch()
+    render(<StepTargeting draft={{ ...EMPTY_DRAFT, placement: 'itinerary_feed' }} patch={patch} />)
+    fireEvent.mouseDown(screen.getByLabelText(/Itinerary gender preference/i))
+    fireEvent.click(screen.getByRole('option', { name: 'Female' }))
+    expect(patch).toHaveBeenCalledWith('targetGender', 'Female')
+  })
 })

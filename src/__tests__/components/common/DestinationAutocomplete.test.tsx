@@ -8,46 +8,44 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { render } from '../../../testUtils/test-utils'
-import DestinationAutocomplete from '../../../components/common/DestinationAutocomplete'
+import DestinationAutocomplete, { __resetGoogleMapsLoader__ } from '../../../components/common/DestinationAutocomplete'
 
 // ─── Hoisted mocks (must exist before vi.mock factory runs) ──────────────────
 
-const { mockLoad, mockGetPlacePredictions } = vi.hoisted(() => ({
-  mockLoad: vi.fn(),
+const { mockImportLibrary, mockGetPlacePredictions } = vi.hoisted(() => ({
+  mockImportLibrary: vi.fn(),
   mockGetPlacePredictions: vi.fn(),
 }))
 
-// Loader must be a regular function — arrow functions cannot be constructors
 vi.mock('@googlemaps/js-api-loader', () => ({
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  Loader: function MockLoader(this: any) {
-    this.load = mockLoad
-  },
+  setOptions: vi.fn(),
+  importLibrary: mockImportLibrary,
 }))
 
 function setupGoogleMock() {
   mockGetPlacePredictions.mockReset()
-  mockLoad.mockReset()
+  mockImportLibrary.mockReset()
   // AutocompleteService must be a regular function — it is invoked with `new`
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function AutocompleteService(this: any) {
     this.getPlacePredictions = mockGetPlacePredictions
   }
-  // @ts-expect-error — global stub for Google Maps SDK
-  global.google = {
-    maps: {
-      places: {
-        AutocompleteService,
-        PlacesServiceStatus: { OK: 'OK' },
-      },
-    },
-  }
-  mockLoad.mockResolvedValue((globalThis as any).google)
+  const placesLib = { AutocompleteService, PlacesServiceStatus: { OK: 'OK' } }
+  mockImportLibrary.mockResolvedValue(placesLib)
 }
 
 // ─── Suite 1: Degraded mode (no API key) ─────────────────────────────────────
 
 describe('DestinationAutocomplete — degraded mode (no API key)', () => {
+  beforeEach(() => {
+    // Ensure the API key is absent even if .env has VITE_GOOGLE_MAPS_API_KEY set
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', '')
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    __resetGoogleMapsLoader__()
+  })
   it('renders a text input with the default label', () => {
     render(<DestinationAutocomplete value="" onSelect={vi.fn()} />)
     expect(screen.getByLabelText(/Target destination/i)).toBeInTheDocument()
@@ -77,7 +75,7 @@ describe('DestinationAutocomplete — degraded mode (no API key)', () => {
     expect(screen.getByText(/VITE_GOOGLE_MAPS_API_KEY/i)).toBeInTheDocument()
   })
 
-  it('renders custom helperText prop over default', () => {
+  it('always shows the "no API key" warning in degraded mode, ignoring custom helperText', () => {
     render(
       <DestinationAutocomplete
         value=""
@@ -85,7 +83,10 @@ describe('DestinationAutocomplete — degraded mode (no API key)', () => {
         helperText="Select a city from the list"
       />
     )
-    expect(screen.getByText(/Select a city from the list/i)).toBeInTheDocument()
+    // The warning must be visible so the user knows autocomplete is disabled
+    expect(screen.getByText(/VITE_GOOGLE_MAPS_API_KEY/i)).toBeInTheDocument()
+    // The custom helperText is intentionally NOT shown in degraded mode
+    expect(screen.queryByText(/Select a city from the list/i)).toBeNull()
   })
 
   it('marks the field as required when required prop is true', () => {
@@ -104,20 +105,21 @@ describe('DestinationAutocomplete — SDK-loaded mode', () => {
 
   afterEach(() => {
     vi.unstubAllEnvs()
-    // @ts-expect-error — clean up global stub
-    delete global.google
+    __resetGoogleMapsLoader__()
     vi.resetModules()
   })
 
   it('shows a disabled loading field while the SDK loads', async () => {
-    let resolveLoad!: (v: unknown) => void
-    mockLoad.mockReturnValue(new Promise(r => { resolveLoad = r }))
+    let resolveImport!: (v: unknown) => void
+    mockImportLibrary.mockReturnValue(new Promise(r => { resolveImport = r }))
 
     render(<DestinationAutocomplete value="" onSelect={vi.fn()} />)
 
     expect(screen.getByLabelText(/Target destination/i)).toBeDisabled()
 
-    await act(async () => { resolveLoad((globalThis as any).google) })
+    // Resolve so pending promises don't bleed into other tests
+    function AutocompleteService(this: any) { this.getPlacePredictions = vi.fn() }
+    await act(async () => { resolveImport({ AutocompleteService, PlacesServiceStatus: { OK: 'OK' } }) })
   })
 
   it('renders the enabled Autocomplete input after the SDK loads', async () => {

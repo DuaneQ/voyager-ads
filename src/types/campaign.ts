@@ -33,6 +33,7 @@ export interface CampaignDraft {
   targetPlaceId: string           // Google Places place_id for canonical destination matching
   targetTravelStartDate: string   // YYYY-MM-DD; converted to startDay epoch ms server-side
   targetTravelEndDate: string     // YYYY-MM-DD; converted to endDay epoch ms server-side
+  targetGender: string            // '' = all; matches itinerary gender preference field
 
   // Step 4 — Budget
   budgetType: BudgetType
@@ -66,6 +67,7 @@ export const EMPTY_DRAFT: CampaignDraft = {
   targetPlaceId: '',
   targetTravelStartDate: '',
   targetTravelEndDate: '',
+  targetGender: '',
   budgetType: 'daily',
   budgetAmount: '',
   billingModel: 'cpm',

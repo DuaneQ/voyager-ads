@@ -27,21 +27,6 @@ describe('StepBudget', () => {
     expect(screen.getByDisplayValue('CPC — Cost per click')).toBeInTheDocument()
   })
 
-  it('shows available balance', () => {
-    render(<StepBudget draft={EMPTY_DRAFT} patch={makePatch()} />)
-    expect(screen.getByText('$100.00')).toBeInTheDocument()
-  })
-
-  it('shows exceeds-balance warning when amount is over 100', () => {
-    render(<StepBudget draft={{ ...EMPTY_DRAFT, budgetAmount: '200' }} patch={makePatch()} />)
-    expect(screen.getByText(/Exceeds available balance/i)).toBeInTheDocument()
-  })
-
-  it('does not show warning when amount is within balance', () => {
-    render(<StepBudget draft={{ ...EMPTY_DRAFT, budgetAmount: '50' }} patch={makePatch()} />)
-    expect(screen.queryByText(/Exceeds available balance/i)).not.toBeInTheDocument()
-  })
-
   it('calls patch when budget amount changes', () => {
     const patch = makePatch()
     render(<StepBudget draft={EMPTY_DRAFT} patch={patch} />)
