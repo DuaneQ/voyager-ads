@@ -1,9 +1,10 @@
-import React from 'react'
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { screen, fireEvent } from '@testing-library/react'
 import { render } from '../../../testUtils/test-utils'
 import { AppAlertProvider } from '../../../context/AppAlertContext'
 import CampaignWizard from '../../../components/campaign/CampaignWizard'
+import * as useCreateCampaignModule from '../../../hooks/useCreateCampaign'
+import { EMPTY_DRAFT } from '../../../types/campaign'
 
 function renderWizard() {
   return render(
@@ -109,5 +110,70 @@ describe('CampaignWizard', () => {
 
     // Step 4: Review — should show Submit button
     expect(screen.getByRole('button', { name: /Submit campaign/i })).toBeInTheDocument()
+  })
+
+  it('shows the submitted confirmation screen after clicking Submit', async () => {
+    renderWizard()
+    // Navigate to last step
+    fireEvent.change(screen.getByLabelText(/Campaign name/i), { target: { value: 'Ad Campaign' } })
+    fireEvent.change(screen.getByLabelText(/Campaign start date/i), { target: { value: '2030-06-01' } })
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }))
+    fireEvent.change(screen.getByLabelText(/Creative name/i), { target: { value: 'Banner' } })
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }))
+    fireEvent.change(screen.getByLabelText(/Audience name/i), { target: { value: 'Travelers' } })
+    fireEvent.change(screen.getByLabelText(/Location/i), { target: { value: 'Paris' } })
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }))
+    fireEvent.change(screen.getByLabelText(/Budget amount/i), { target: { value: '25' } })
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }))
+    // Agree to policy to enable submit
+    fireEvent.click(screen.getByRole('checkbox'))
+    fireEvent.click(screen.getByRole('button', { name: /Submit campaign/i }))
+    // Submitted confirmation
+    expect(await screen.findByText(/Campaign submitted!/i)).toBeInTheDocument()
+    expect(screen.getByRole('status')).toBeInTheDocument()
+  })
+
+  it('resets back to the wizard after clicking Create another campaign', async () => {
+    renderWizard()
+    // Fast-track to submit
+    fireEvent.change(screen.getByLabelText(/Campaign name/i), { target: { value: 'Ad Campaign' } })
+    fireEvent.change(screen.getByLabelText(/Campaign start date/i), { target: { value: '2030-06-01' } })
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }))
+    fireEvent.change(screen.getByLabelText(/Creative name/i), { target: { value: 'Banner' } })
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }))
+    fireEvent.change(screen.getByLabelText(/Audience name/i), { target: { value: 'Travelers' } })
+    fireEvent.change(screen.getByLabelText(/Location/i), { target: { value: 'Paris' } })
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }))
+    fireEvent.change(screen.getByLabelText(/Budget amount/i), { target: { value: '25' } })
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }))
+    fireEvent.click(screen.getByRole('checkbox'))
+    fireEvent.click(screen.getByRole('button', { name: /Submit campaign/i }))
+    await screen.findByText(/Campaign submitted!/i)
+    fireEvent.click(screen.getByRole('button', { name: /Create another campaign/i }))
+    // Back to step 0
+    expect(screen.getByLabelText(/Campaign name/i)).toBeInTheDocument()
+  })
+
+  it('surfaces submitError through the global alert snackbar', () => {
+    vi.spyOn(useCreateCampaignModule, 'useCreateCampaign').mockReturnValue({
+      step: 0,
+      draft: EMPTY_DRAFT,
+      patch: vi.fn(),
+      next: vi.fn(),
+      back: vi.fn(),
+      goTo: vi.fn(),
+      submit: vi.fn(),
+      reset: vi.fn(),
+      submitted: false,
+      submitError: 'Network error — please try again.',
+    })
+
+    renderWizard()
+
+    // The useEffect in CampaignWizard calls showError(submitError),
+    // which renders the Snackbar alert message.
+    expect(screen.getByText('Network error — please try again.')).toBeInTheDocument()
+
+    vi.restoreAllMocks()
   })
 })

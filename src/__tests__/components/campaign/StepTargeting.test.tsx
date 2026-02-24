@@ -1,4 +1,3 @@
-import React from 'react'
 import { describe, it, expect, vi } from 'vitest'
 import { screen, fireEvent } from '@testing-library/react'
 import { render } from '../../../testUtils/test-utils'
@@ -78,5 +77,57 @@ describe('StepTargeting', () => {
     render(<StepTargeting draft={EMPTY_DRAFT} patch={patch} />)
     fireEvent.change(screen.getByLabelText(/Interests/i), { target: { value: 'surfing' } })
     expect(patch).toHaveBeenCalledWith('interests', 'surfing')
+  })
+
+  it('calls patch when travel start date changes (itinerary_feed)', () => {
+    const patch = makePatch()
+    render(<StepTargeting draft={{ ...EMPTY_DRAFT, placement: 'itinerary_feed' }} patch={patch} />)
+    fireEvent.change(screen.getByLabelText(/Travel start date/i), { target: { value: '2030-07-01' } })
+    expect(patch).toHaveBeenCalledWith('targetTravelStartDate', '2030-07-01')
+  })
+
+  it('calls patch when travel end date changes (itinerary_feed)', () => {
+    const patch = makePatch()
+    render(<StepTargeting draft={{ ...EMPTY_DRAFT, placement: 'itinerary_feed' }} patch={patch} />)
+    fireEvent.change(screen.getByLabelText(/Travel end date/i), { target: { value: '2030-07-14' } })
+    expect(patch).toHaveBeenCalledWith('targetTravelEndDate', '2030-07-14')
+  })
+
+  it('calls patch when radius changes (video_feed)', () => {
+    const patch = makePatch()
+    render(<StepTargeting draft={{ ...EMPTY_DRAFT, placement: 'video_feed' }} patch={patch} />)
+    fireEvent.change(screen.getByLabelText(/Radius/i), { target: { value: '50' } })
+    expect(patch).toHaveBeenCalledWith('radius', '50')
+  })
+
+  it('shows the "Additional targeting (optional)" label for itinerary_feed', () => {
+    render(<StepTargeting draft={{ ...EMPTY_DRAFT, placement: 'itinerary_feed' }} patch={makePatch()} />)
+    expect(screen.getByText(/Additional targeting \(optional\)/i)).toBeInTheDocument()
+  })
+
+  it('shows Place ID confirmed helper text when targetPlaceId is set', () => {
+    render(
+      <StepTargeting
+        draft={{ ...EMPTY_DRAFT, placement: 'itinerary_feed', targetPlaceId: 'ChIJtest12345' }}
+        patch={makePatch()}
+      />
+    )
+    expect(screen.getByText(/Place ID confirmed/i)).toBeInTheDocument()
+  })
+
+  it('calls patch when ageFrom selector changes', () => {
+    const patch = makePatch()
+    render(<StepTargeting draft={EMPTY_DRAFT} patch={patch} />)
+    fireEvent.mouseDown(screen.getByLabelText(/From/i))
+    fireEvent.click(screen.getByRole('option', { name: '25' }))
+    expect(patch).toHaveBeenCalledWith('ageFrom', '25')
+  })
+
+  it('calls patch when ageTo selector changes', () => {
+    const patch = makePatch()
+    render(<StepTargeting draft={EMPTY_DRAFT} patch={patch} />)
+    fireEvent.mouseDown(screen.getByLabelText(/To/i))
+    fireEvent.click(screen.getByRole('option', { name: '44' }))
+    expect(patch).toHaveBeenCalledWith('ageTo', '44')
   })
 })

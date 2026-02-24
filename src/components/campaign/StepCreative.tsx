@@ -153,7 +153,7 @@ const StepCreative: React.FC<Props> = ({ draft, patch }) => {
             Sponsored
           </Box>
         </Box>
-      ) : !previewUrl && draft.placement !== 'itinerary_feed' ? (
+      ) : !previewUrl && (draft.placement as string) !== 'itinerary_feed' ? (
         <Box
           sx={{
             aspectRatio: previewAspect,

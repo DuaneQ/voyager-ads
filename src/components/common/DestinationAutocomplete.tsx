@@ -50,7 +50,7 @@ export interface DestinationAutocompleteProps {
 // ─── Singleton loader (one SDK load per page) ─────────────────────────────────
 
 let _loader: Loader | null = null
-let _loadPromise: Promise<typeof google> | null = null
+let _loadPromise: Promise<any> | null = null
 
 function ensureLoaded(): Promise<typeof google> | null {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined
@@ -80,7 +80,7 @@ const DestinationAutocomplete: React.FC<DestinationAutocompleteProps> = ({
   const [loading, setLoading] = useState(false)
   const [sdkReady, setSdkReady] = useState(false)
 
-  const serviceRef = useRef<google.maps.places.AutocompleteService | null>(null)
+  const serviceRef = useRef<any | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Sync controlled value into local input state
@@ -113,14 +113,14 @@ const DestinationAutocomplete: React.FC<DestinationAutocompleteProps> = ({
       setLoading(true)
       serviceRef.current!.getPlacePredictions(
         { input, types: ['(cities)'] },
-        (predictions, status) => {
+        (predictions: any, status: any) => {
           setLoading(false)
           if (
             status === google.maps.places.PlacesServiceStatus.OK &&
             predictions
           ) {
             setOptions(
-              predictions.map(p => ({
+              predictions.map((p: any) => ({
                 description: p.description,
                 placeId: p.place_id,
               }))
