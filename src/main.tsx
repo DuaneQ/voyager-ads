@@ -6,6 +6,8 @@ import CssBaseline from '@mui/material/CssBaseline'
 import { HelmetProvider } from 'react-helmet-async'
 import theme from './styles/theme'
 import App from './App.tsx'
+import { AppAlertProvider } from './context/AppAlertContext'
+import ErrorBoundary from './components/common/ErrorBoundary'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -13,7 +15,11 @@ createRoot(document.getElementById('root')!).render(
       <BrowserRouter>
         <ThemeProvider theme={theme}>
           <CssBaseline />
-          <App />
+          <AppAlertProvider>
+            <ErrorBoundary>
+              <App />
+            </ErrorBoundary>
+          </AppAlertProvider>
         </ThemeProvider>
       </BrowserRouter>
     </HelmetProvider>
