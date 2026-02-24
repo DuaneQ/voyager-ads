@@ -1,15 +1,22 @@
-import { Routes, Route } from 'react-router-dom'
+import { lazy, Suspense } from 'react'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import Landing from './pages/Landing'
-import ProductsPage from './pages/ProductsPage'
-import PricingPage from './pages/PricingPage'
+
+const ProductsPage = lazy(() => import('./pages/ProductsPage'))
+const PricingPage = lazy(() => import('./pages/PricingPage'))
+const SignInPage = lazy(() => import('./pages/SignInPage'))
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Landing />} />
-      <Route path="/products" element={<ProductsPage />} />
-      <Route path="/pricing" element={<PricingPage />} />
-    </Routes>
+    <Suspense fallback={null}>
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="/products" element={<ProductsPage />} />
+        <Route path="/pricing" element={<PricingPage />} />
+        <Route path="/signin" element={<SignInPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
   )
 }
 

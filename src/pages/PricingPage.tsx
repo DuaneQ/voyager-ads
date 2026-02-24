@@ -1,4 +1,5 @@
 import React from 'react'
+import { Helmet } from 'react-helmet-async'
 import Box from '@mui/material/Box'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
@@ -16,6 +17,11 @@ import PRICING_SIMPLE from '../config/pricingConstants'
 const PricingPage: React.FC = () => {
   return (
     <Box component="main">
+      <Helmet>
+        <title>Pricing \u2014 TravalPass Ads</title>
+        <meta name="description" content="Transparent, performance-based pricing for TravalPass ad placements. CPM for Itinerary Feed, CPV for Video Feed, and CPM for AI Itinerary native recommendations." />
+        <link rel="canonical" href="https://travalpass-ads.web.app/pricing" />
+      </Helmet>
       <Nav />
       <Container maxWidth="md" sx={{ py: 4 }}>
         <Typography variant="h1" gutterBottom>Pricing</Typography>

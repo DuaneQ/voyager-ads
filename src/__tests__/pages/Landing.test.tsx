@@ -9,16 +9,16 @@ describe('Landing page', () => {
     expect(screen.getByText('The power of TravalPass Ads, for your business')).toBeTruthy()
   })
 
-  it('renders the Questions section with two items', () => {
+  it('renders the Questions section with two items', async () => {
     render(<Landing />)
-    expect(screen.getByText('Questions?')).toBeTruthy()
+    expect(await screen.findByText('Questions?')).toBeTruthy()
     expect(screen.getByText('How do TravalPass Ads work?')).toBeTruthy()
     expect(screen.getByText('How can TravalPass Ads help my business?')).toBeTruthy()
   })
 
-  it('opens the "How do Ads work" modal on click', () => {
+  it('opens the "How do Ads work" modal on click', async () => {
     render(<Landing />)
-    fireEvent.click(screen.getByText('How do TravalPass Ads work?'))
+    fireEvent.click(await screen.findByText('How do TravalPass Ads work?'))
     expect(screen.getByRole('dialog')).toBeTruthy()
     // modal title
     const dialog = screen.getByRole('dialog')
@@ -27,15 +27,15 @@ describe('Landing page', () => {
 
   it('closes the "How do Ads work" modal on close', async () => {
     render(<Landing />)
-    fireEvent.click(screen.getByText('How do TravalPass Ads work?'))
+    fireEvent.click(await screen.findByText('How do TravalPass Ads work?'))
     fireEvent.click(screen.getByLabelText(/close/i))
     // MUI Dialog has exit animations — waitFor lets React flush the transition
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   })
 
-  it('opens the "Help my business" modal on click', () => {
+  it('opens the "Help my business" modal on click', async () => {
     render(<Landing />)
-    fireEvent.click(screen.getByText('How can TravalPass Ads help my business?'))
+    fireEvent.click(await screen.findByText('How can TravalPass Ads help my business?'))
     expect(screen.getByRole('dialog')).toBeTruthy()
   })
 

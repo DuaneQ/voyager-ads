@@ -28,10 +28,6 @@ const Hero: React.FC<Props> = ({
             interval={2000}
           />
           <p className="hero-lead">{subtitle}</p>
-          <div className="hero-actions">
-            <a className="btn-primary" href="#get-started">Get started</a>
-            <a className="btn-ghost" href="#learn-more">Learn more</a>
-          </div>
         </div>
         <div className="hero-art">
           <Carousel

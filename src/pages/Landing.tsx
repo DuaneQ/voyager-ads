@@ -1,21 +1,21 @@
-import React, { useState } from 'react'
+import React, { lazy, Suspense, useState } from 'react'
+import { Helmet } from 'react-helmet-async'
 import '../App.css'
 import Nav from '../components/common/Nav'
 import Hero from '../components/landing/Hero'
-import Modal from '../components/common/Modal'
-import List from '@mui/material/List'
-import ListItemButton from '@mui/material/ListItemButton'
-import ListItemText from '@mui/material/ListItemText'
-import ChevronRightIcon from '@mui/icons-material/ChevronRight'
-import Typography from '@mui/material/Typography'
-import Box from '@mui/material/Box'
+
+const LandingQuestions = lazy(() => import('../components/landing/LandingQuestions'))
 
 const Landing: React.FC = () => {
-  const [open, setOpen] = useState<null | 'how' | 'connect'>(null)
   const [faqOpen, setFaqOpen] = useState<number | null>(null)
 
   return (
     <main id="landing-root">
+      <Helmet>
+        <title>TravalPass Ads — Advertise to High-Intent Travelers</title>
+        <meta name="description" content="Reach travelers while they plan trips. TravalPass Ads puts your brand inside AI-generated itineraries, travel feeds, and discovery surfaces — at the moment intent is highest." />
+        <link rel="canonical" href="https://travalpass-ads.web.app/" />
+      </Helmet>
       <Nav />
       <Hero />
 
@@ -87,7 +87,10 @@ const Landing: React.FC = () => {
         <div className="tp-grid">
           <div className="tp-item">
             <div className="tp-card tp-top-visual">
-              <img src="/assets/ads/reach_travelers.png" alt="Illustration: reach travelers" />
+              <picture>
+                <source srcSet="/assets/ads/reach_travelers.webp" type="image/webp" />
+                <img src="/assets/ads/reach_travelers.png" alt="Illustration: reach travelers" loading="lazy" />
+              </picture>
             </div>
             <h3>Reach travelers where they plan</h3>
             <p>Show your offers across TravalPass surfaces — itineraries, discovery feeds, and planning tools — so your message appears when travelers are making decisions.</p>
@@ -95,7 +98,10 @@ const Landing: React.FC = () => {
 
           <div className="tp-item">
             <div className="tp-card tp-top-visual">
-              <img src="/assets/ads/measure.png" alt="Illustration: measure and optimize" />
+              <picture>
+                <source srcSet="/assets/ads/measure.webp" type="image/webp" />
+                <img src="/assets/ads/measure.png" alt="Illustration: measure and optimize" loading="lazy" />
+              </picture>
             </div>
             <h3>Measure and optimize for real outcomes</h3>
             <p>Track conversions and audience signals inside TravalPass. Automated optimization focuses budget on placements and creatives that drive the most value for your objectives.</p>
@@ -103,7 +109,10 @@ const Landing: React.FC = () => {
 
           <div className="tp-item">
             <div className="tp-card tp-top-visual">
-              <img src="/assets/ads/budget.png" alt="Illustration: budget control" />
+              <picture>
+                <source srcSet="/assets/ads/budget.webp" type="image/webp" />
+                <img src="/assets/ads/budget.png" alt="Illustration: budget control" loading="lazy" />
+              </picture>
             </div>
             <h3>Keep full control of budget and performance</h3>
             <p>Set budgets, get practical recommendations, and adjust campaigns anytime — with transparent reporting so you can manage ROI confidently.</p>
@@ -111,31 +120,9 @@ const Landing: React.FC = () => {
         </div>
       </section>
 
-      <Box component="section" aria-label="learn more" sx={{ maxWidth: 720, mx: 'auto', px: 2, py: 3 }}>
-        <Typography variant="h3" align="center" gutterBottom>Questions?</Typography>
-        <List disablePadding>
-          <ListItemButton divider onClick={() => setOpen('how')}>
-            <ListItemText primary="How do TravalPass Ads work?" />
-            <ChevronRightIcon color="action" />
-          </ListItemButton>
-          <ListItemButton onClick={() => setOpen('connect')}>
-            <ListItemText primary="How can TravalPass Ads help my business?" />
-            <ChevronRightIcon color="action" />
-          </ListItemButton>
-        </List>
-      </Box>
-
-      <Modal open={open === 'how'} title="How do TravalPass Ads work?" onClose={() => setOpen(null)}>
-        <p>
-          Great question! TravalPass Ads place your promotions directly inside travelers' planning experiences on our platform. We match creative to the traveler’s intent and trip context so your message reaches people at the decision moment — helping increase bookings, inquiries, store visits, or broader brand awareness.
-        </p>
-      </Modal>
-
-      <Modal open={open === 'connect'} title="How can TravalPass Ads help my business?" onClose={() => setOpen(null)}>
-        <p>
-          TravalPass Ads help you reach travelers actively planning trips who are likely to be interested in your offerings. By targeting relevant trip moments and measuring outcomes, you can drive reservations, leads, or in-person visits that grow your business.
-        </p>
-      </Modal>
+      <Suspense fallback={null}>
+        <LandingQuestions />
+      </Suspense>
 
       <section className="faq-section" aria-label="frequently asked questions">
         <h2>Frequently asked questions</h2>
