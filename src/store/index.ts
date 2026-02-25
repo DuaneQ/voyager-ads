@@ -12,5 +12,5 @@ export { default as useAuthStore } from './authStore'
 export { default as useCampaignStore } from './campaignStore'
 export { default as useBillingStore } from './billingStore'
 
-export type { User } from './authStore'
+export type { User } from 'firebase/auth'
 export type { BillingStatus } from './billingStore'
