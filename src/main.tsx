@@ -8,20 +8,50 @@ import theme from './styles/theme'
 import App from './App.tsx'
 import { AppAlertProvider } from './context/AppAlertContext'
 import ErrorBoundary from './components/common/ErrorBoundary'
+import { authService } from './services/auth/authServiceInstance'
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <HelmetProvider>
-      <BrowserRouter>
-        <ThemeProvider theme={theme}>
-          <CssBaseline />
-          <AppAlertProvider>
-            <ErrorBoundary>
-              <App />
-            </ErrorBoundary>
-          </AppAlertProvider>
-        </ThemeProvider>
-      </BrowserRouter>
-    </HelmetProvider>
-  </StrictMode>,
-)
+async function renderApp() {
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <HelmetProvider>
+        <BrowserRouter>
+          <ThemeProvider theme={theme}>
+            <CssBaseline />
+            <AppAlertProvider>
+              <ErrorBoundary>
+                <App />
+              </ErrorBoundary>
+            </AppAlertProvider>
+          </ThemeProvider>
+        </BrowserRouter>
+      </HelmetProvider>
+    </StrictMode>,
+  )
+}
+
+// Dev-only: optional Playwright bypass for auth to stabilize E2E.
+// This is gated to run only when explicitly enabled via localStorage by tests
+// and never runs in production builds.
+if (import.meta.env.MODE !== 'production' && typeof window !== 'undefined') {
+  const bypass = window.localStorage.getItem('PLAYWRIGHT_BYPASS_AUTH')
+  const email = window.localStorage.getItem('PLAYWRIGHT_BYPASS_EMAIL')
+  const password = window.localStorage.getItem('PLAYWRIGHT_BYPASS_PASSWORD')
+  if (bypass === '1' && email && password) {
+    // Try to sign in before rendering so the app boots in an authenticated state.
+    authService
+      .signInWithEmail(email, password)
+      .then(() => {
+        console.log('E2E: bypass auth sign-in succeeded')
+        renderApp()
+      })
+      .catch((err) => {
+        console.warn('E2E: bypass auth sign-in failed', err)
+        // continue to render app (tests can fall back to UI sign-in)
+        renderApp()
+      })
+  } else {
+    renderApp()
+  }
+} else {
+  renderApp()
+}

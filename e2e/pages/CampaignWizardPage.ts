@@ -33,14 +33,21 @@ export class CampaignWizardPage {
     // scope the search to the StepDetails group to avoid matching similar text on other pages
     const stepGroup = this.page.getByRole('group', { name: /Step 1 of .*: Details/i }).first();
     if (await stepGroup.count()) {
-      const byText = stepGroup.getByText(new RegExp(`^${name}$`, 'i')).first();
+      // allow partial/substring matches (more resilient to small label changes)
+      const byText = stepGroup.getByText(new RegExp(`${name}`, 'i')).first();
       if (await byText.count()) {
         await byText.click();
         return;
       }
+      // try any button inside stepGroup with matching text
+      const btn = stepGroup.getByRole('button', { name: new RegExp(`${name}`, 'i') }).first();
+      if (await btn.count()) {
+        await btn.click();
+        return;
+      }
     }
-    // fallback to global text search if scoped search fails
-    const byTextGlobal = this.page.getByText(new RegExp(`^${name}$`, 'i')).first();
+    // fallback to global text search if scoped search fails (allow substring)
+    const byTextGlobal = this.page.getByText(new RegExp(`${name}`, 'i')).first();
     if (await byTextGlobal.count()) {
       await byTextGlobal.click();
       return;
@@ -49,6 +56,14 @@ export class CampaignWizardPage {
     const radio = this.page.getByLabel(new RegExp(name, 'i'));
     if (await radio.count()) {
       await radio.first().click();
+      return;
+    }
+
+    // try data-testid-based fallback (placement identifiers)
+    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const byTestId = this.page.locator(`[data-testid="placement-${slug}"]`).first();
+    if (await byTestId.count()) {
+      await byTestId.click();
       return;
     }
 

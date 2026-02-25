@@ -58,6 +58,32 @@ describe('FirebaseAuthService', () => {
     expect(firebaseAuth.sendPasswordResetEmail).toHaveBeenCalled()
   })
 
+  it('onAuthStateChanged subscribes to auth changes and returns unsubscribe', () => {
+    let cbRef: any = null
+    let active = true
+    ;(firebaseAuth.onAuthStateChanged as any) = vi.fn().mockImplementation((auth: any, cb: any) => {
+      // expose a wrapper that respects `active` so unsubscribe can prevent future calls
+      cbRef = (user: any) => { if (active) cb(user) }
+      if (active) cbRef({ uid: 'init-user' })
+      return () => { active = false }
+    })
+
+    const handler = vi.fn()
+    const unsubscribe = svc.onAuthStateChanged(handler)
+
+    expect(firebaseAuth.onAuthStateChanged).toHaveBeenCalledWith(fakeAuth, expect.any(Function))
+    expect(handler).toHaveBeenCalledWith({ uid: 'init-user' })
+
+    // invoke callback again while active
+    cbRef({ uid: 'second' })
+    expect(handler).toHaveBeenCalledTimes(2)
+
+    // call unsubscribe and ensure subsequent events are ignored
+    unsubscribe()
+    cbRef({ uid: 'after-unsub' })
+    expect(handler).toHaveBeenCalledTimes(2)
+  })
+
   afterEach(() => {
     vi.resetAllMocks()
   })
