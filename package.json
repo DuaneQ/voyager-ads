@@ -21,6 +21,7 @@
     "@googlemaps/js-api-loader": "^2.0.2",
     "@mui/icons-material": "^7.3.8",
     "@mui/material": "^7.3.8",
+    "firebase": "^12.9.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-helmet-async": "^2.0.5",
