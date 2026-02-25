@@ -17,7 +17,7 @@ export class CampaignWizardPage {
     this.submitButton = page.getByRole('button', { name: /create|submit|finish/i }).first();
   }
 
-  async goto(baseUrl = process.env.BASE_URL || 'http://localhost:5173') {
+  async goto(baseUrl = process.env.PLAYWRIGHT_BASE_URL || process.env.BASE_URL || 'http://localhost:5173') {
     await this.page.goto(`${baseUrl}/create-campaign`);
     await this.page.waitForLoadState('networkidle');
   }

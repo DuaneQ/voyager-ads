@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import CampaignWizardPage from '../pages/CampaignWizardPage';
 import { selectGooglePlace } from '../helpers/googleAutocomplete';
 
-const BASE = process.env.BASE_URL || 'http://localhost:5173';
+const BASE = process.env.PLAYWRIGHT_BASE_URL || process.env.BASE_URL || 'http://localhost:5173';
 
 test.describe('Campaign Wizard - placements', () => {
   test.beforeEach(async ({ page }) => {
