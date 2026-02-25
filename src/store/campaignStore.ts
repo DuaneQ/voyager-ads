@@ -1,27 +1,5 @@
 import { create } from 'zustand'
-import type { PricingModel } from '../config/pricingConstants'
-
-export interface CampaignDraft {
-  name: string
-  placementKey: string   // matches a key in PRICING_SIMPLE
-  billingModel: PricingModel | ''
-  dailyBudgetUsd: number | null
-  targeting: {
-    geoRegions: string[]
-    interests: string[]
-  }
-}
-
-const EMPTY_DRAFT: CampaignDraft = {
-  name: '',
-  placementKey: '',
-  billingModel: '',
-  dailyBudgetUsd: null,
-  targeting: {
-    geoRegions: [],
-    interests: [],
-  },
-}
+import { type CampaignDraft, EMPTY_DRAFT } from '../types/campaign'
 
 interface CampaignState {
   draft: CampaignDraft
@@ -36,7 +14,11 @@ interface CampaignState {
 
 /**
  * Holds the in-progress campaign draft for the campaign creation flow.
+ * CampaignDraft shape lives in src/types/campaign.ts — the single source of truth.
  * Does not persist — a submitted campaign is handled server-side.
+ *
+ * Wire this store once the wizard needs cross-route persistence or access from
+ * outside the wizard subtree (e.g. a /campaigns dashboard or auth gate).
  */
 const useCampaignStore = create<CampaignState>((set) => ({
   draft: EMPTY_DRAFT,
@@ -46,7 +28,7 @@ const useCampaignStore = create<CampaignState>((set) => ({
   setDraftField: (field, value) =>
     set((state) => ({ draft: { ...state.draft, [field]: value } })),
 
-  resetDraft: () => set({ draft: EMPTY_DRAFT, submissionError: null }),
+  resetDraft: () => set({ draft: EMPTY_DRAFT, submissionError: null, isSubmitting: false }),
 
   setSubmitting: (value) => set({ isSubmitting: value }),
 

@@ -23,7 +23,7 @@ const Nav: React.FC = () => {
           <MuiLink component={RouterLink} to="/signin" underline="none" color="text.primary">
             Sign in
           </MuiLink>
-          <Button component={RouterLink} to="/pricing#get-started" variant="outlined" size="small">
+          <Button component={RouterLink} to="/create-campaign" variant="contained" size="small">
             Get started
           </Button>
         </Box>

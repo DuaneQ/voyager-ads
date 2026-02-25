@@ -5,6 +5,7 @@ import Landing from './pages/Landing'
 const ProductsPage = lazy(() => import('./pages/ProductsPage'))
 const PricingPage = lazy(() => import('./pages/PricingPage'))
 const SignInPage = lazy(() => import('./pages/SignInPage'))
+const CreateCampaignPage = lazy(() => import('./pages/CreateCampaignPage'))
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
         <Route path="/products" element={<ProductsPage />} />
         <Route path="/pricing" element={<PricingPage />} />
         <Route path="/signin" element={<SignInPage />} />
+        <Route path="/create-campaign" element={<CreateCampaignPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>

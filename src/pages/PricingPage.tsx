@@ -18,7 +18,7 @@ const PricingPage: React.FC = () => {
   return (
     <Box component="main">
       <Helmet>
-        <title>Pricing \u2014 TravalPass Ads</title>
+        <title>Pricing — TravalPass Ads</title>
         <meta name="description" content="Transparent, performance-based pricing for TravalPass ad placements. CPM for Itinerary Feed, CPV for Video Feed, and CPM for AI Itinerary native recommendations." />
         <link rel="canonical" href="https://travalpass-ads.web.app/pricing" />
       </Helmet>
