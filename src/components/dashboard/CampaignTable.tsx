@@ -129,7 +129,7 @@ const CampaignTable: React.FC<Props> = ({ campaigns }) => {
                       data={PLACEHOLDER_SPARKLINE}
                       width={80}
                       height={36}
-                      colors={campaign.isUnderReview ? ['#bdbdbd'] : ['#1976d2']}
+                      color={campaign.isUnderReview ? '#bdbdbd' : '#1976d2'}
                       curve="linear"
                     />
                   </span>

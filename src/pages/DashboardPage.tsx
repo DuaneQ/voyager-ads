@@ -49,7 +49,6 @@ const DashboardPage: React.FC = () => {
         {error && !loading && (
           <Box sx={{ textAlign: 'center', py: 6 }}>
             <Typography color="error" gutterBottom>{error}</Typography>
-            {console.log('Dashboard campaigns fetch error:', error)}
             <Button variant="outlined" onClick={refetch}>Retry</Button>
           </Box>
         )}
