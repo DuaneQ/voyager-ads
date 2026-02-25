@@ -73,6 +73,8 @@ jobs:
         run: npm run test:e2e
         env:
           PLAYWRIGHT_BASE_URL: ${{ steps.firebase_deploy.outputs.details_url }}
+          FEEDBACK_EMAIL: ${{ secrets.FEEDBACK_EMAIL }}
+          FEEDBACK_PASSWORD: ${{ secrets.FEEDBACK_PASSWORD }}
 
       - name: Upload Playwright report
         if: always()
