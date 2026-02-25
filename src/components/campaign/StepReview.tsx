@@ -143,6 +143,15 @@ const StepReview: React.FC<Props> = ({ draft, patch }) => {
           }
         </Box>
         <Row label="Landing URL" value={draft.landingUrl} />
+        {draft.placement === 'ai_slot' && (
+          <>
+            {draft.businessType && <Row label="Business type" value={draft.businessType} />}
+            {draft.address && <Row label="Address" value={draft.address} />}
+            {draft.phone && <Row label="Phone" value={draft.phone} />}
+            {draft.email && <Row label="Email" value={draft.email} />}
+            {draft.promoCode && <Row label="Promo code" value={draft.promoCode} />}
+          </>
+        )}
       </SectionCard>
 
       {/* Targeting */}
@@ -172,6 +181,36 @@ const StepReview: React.FC<Props> = ({ draft, patch }) => {
             <Typography variant="body2">—</Typography>
           )}
         </Box>
+        {draft.placement === 'ai_slot' && draft.targetTripTypes.length > 0 && (
+          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'space-between', py: 0.75, alignItems: 'flex-start' }}>
+            <Typography variant="body2" color="text.secondary" sx={{ minWidth: 140, flexShrink: 0 }}>Trip types</Typography>
+            <Stack direction="row" flexWrap="wrap" gap={0.5} justifyContent="flex-end">
+              {draft.targetTripTypes.map(t => (
+                <Chip key={t} label={t} size="small" variant="outlined" sx={{ fontSize: '0.72rem', textTransform: 'capitalize' }} />
+              ))}
+            </Stack>
+          </Box>
+        )}
+        {draft.placement === 'ai_slot' && draft.targetActivityPreferences.length > 0 && (
+          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'space-between', py: 0.75, alignItems: 'flex-start' }}>
+            <Typography variant="body2" color="text.secondary" sx={{ minWidth: 140, flexShrink: 0 }}>Activities</Typography>
+            <Stack direction="row" flexWrap="wrap" gap={0.5} justifyContent="flex-end">
+              {draft.targetActivityPreferences.map(a => (
+                <Chip key={a} label={a} size="small" variant="outlined" sx={{ fontSize: '0.72rem' }} />
+              ))}
+            </Stack>
+          </Box>
+        )}
+        {draft.placement === 'ai_slot' && draft.targetTravelStyles.length > 0 && (
+          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'space-between', py: 0.75, alignItems: 'flex-start' }}>
+            <Typography variant="body2" color="text.secondary" sx={{ minWidth: 140, flexShrink: 0 }}>Travel styles</Typography>
+            <Stack direction="row" flexWrap="wrap" gap={0.5} justifyContent="flex-end">
+              {draft.targetTravelStyles.map(s => (
+                <Chip key={s} label={s} size="small" variant="outlined" sx={{ fontSize: '0.72rem', textTransform: 'capitalize' }} />
+              ))}
+            </Stack>
+          </Box>
+        )}
       </SectionCard>
 
       {/* Budget */}

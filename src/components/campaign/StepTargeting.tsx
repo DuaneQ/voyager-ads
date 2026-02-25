@@ -1,9 +1,11 @@
 import React from 'react'
 import Box from '@mui/material/Box'
 import Checkbox from '@mui/material/Checkbox'
+import Chip from '@mui/material/Chip'
 import Divider from '@mui/material/Divider'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import MenuItem from '@mui/material/MenuItem'
+import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { type CampaignDraft } from '../../types/campaign'
@@ -17,6 +19,17 @@ interface Props {
 
 const AGES = ['18', '25', '35', '45', '55']
 const AGES_TO = ['24', '34', '44', '54', '65+']
+
+const TRIP_TYPES = [
+  'leisure', 'business', 'adventure', 'romantic', 'family', 'bachelor', 'spiritual',
+]
+
+const ACTIVITY_PREFERENCES = [
+  'Cultural', 'Adventure', 'Relaxation', 'Nightlife', 'Shopping',
+  'Food & Dining', 'Nature', 'Photography',
+]
+
+const TRAVEL_STYLES = ['budget', 'mid-range', 'luxury', 'backpacker']
 
 /** Matches the gender options on itinerary documents in Firestore. '' = no filter. */
 const GENDER_OPTIONS: { label: string; value: string }[] = [
@@ -33,6 +46,19 @@ const GENDER_OPTIONS: { label: string; value: string }[] = [
 
 const StepTargeting: React.FC<Props> = ({ draft, patch }) => {
   const isItineraryFeed = draft.placement === 'itinerary_feed'
+  const isAiSlot = draft.placement === 'ai_slot'
+
+  /** Toggle a value in one of the string[] targeting arrays */
+  function toggleArrayValue<K extends 'targetTripTypes' | 'targetActivityPreferences' | 'targetTravelStyles'>(
+    key: K,
+    value: string
+  ) {
+    const current = draft[key] as string[]
+    const next = current.includes(value)
+      ? current.filter(v => v !== value)
+      : [...current, value]
+    patch(key, next as CampaignDraft[K])
+  }
   const today = todayLocalDate()
   const travelDateErrors = validateTravelDates(
     draft.targetTravelStartDate,
@@ -128,27 +154,87 @@ const StepTargeting: React.FC<Props> = ({ draft, patch }) => {
         </Box>
       )}
 
+      {/* ── AI Slot preference targeting ──────────────────────────────────── */}
+      {isAiSlot && (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Typography variant="body2" fontWeight={600}>
+            AI itinerary targeting
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ mt: -1 }}>
+            Target users based on the preferences they selected when generating their AI itinerary.
+            Leave all unselected to show to everyone.
+          </Typography>
+
+          {/* Trip type */}
+          <Box>
+            <Typography variant="body2" fontWeight={500} sx={{ mb: 0.75 }}>Trip type</Typography>
+            <Stack direction="row" flexWrap="wrap" gap={0.75}>
+              {TRIP_TYPES.map(t => (
+                <Chip
+                  key={t}
+                  label={t.charAt(0).toUpperCase() + t.slice(1)}
+                  size="small"
+                  onClick={() => toggleArrayValue('targetTripTypes', t)}
+                  color={draft.targetTripTypes.includes(t) ? 'primary' : 'default'}
+                  variant={draft.targetTripTypes.includes(t) ? 'filled' : 'outlined'}
+                  sx={{ cursor: 'pointer', textTransform: 'capitalize' }}
+                />
+              ))}
+            </Stack>
+          </Box>
+
+          {/* Activity preferences */}
+          <Box>
+            <Typography variant="body2" fontWeight={500} sx={{ mb: 0.75 }}>Activity preferences</Typography>
+            <Stack direction="row" flexWrap="wrap" gap={0.75}>
+              {ACTIVITY_PREFERENCES.map(a => (
+                <Chip
+                  key={a}
+                  label={a}
+                  size="small"
+                  onClick={() => toggleArrayValue('targetActivityPreferences', a)}
+                  color={draft.targetActivityPreferences.includes(a) ? 'primary' : 'default'}
+                  variant={draft.targetActivityPreferences.includes(a) ? 'filled' : 'outlined'}
+                  sx={{ cursor: 'pointer' }}
+                />
+              ))}
+            </Stack>
+          </Box>
+
+          {/* Travel style */}
+          <Box>
+            <Typography variant="body2" fontWeight={500} sx={{ mb: 0.75 }}>Travel style</Typography>
+            <Stack direction="row" flexWrap="wrap" gap={0.75}>
+              {TRAVEL_STYLES.map(s => (
+                <Chip
+                  key={s}
+                  label={s.charAt(0).toUpperCase() + s.slice(1)}
+                  size="small"
+                  onClick={() => toggleArrayValue('targetTravelStyles', s)}
+                  color={draft.targetTravelStyles.includes(s) ? 'primary' : 'default'}
+                  variant={draft.targetTravelStyles.includes(s) ? 'filled' : 'outlined'}
+                  sx={{ cursor: 'pointer', textTransform: 'capitalize' }}
+                />
+              ))}
+            </Stack>
+          </Box>
+
+          <Divider />
+          <Typography variant="caption" color="text.secondary" fontWeight={500}>
+            Additional targeting (optional)
+          </Typography>
+        </Box>
+      )}
+
       {/* ── General location (non-itinerary-feed or additional) ───────────── */}
       {!isItineraryFeed && (
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-          <TextField
-            label="Location"
-            required
-            sx={{ flex: 2, minWidth: 200 }}
-            placeholder="Country or city"
-            value={draft.location}
-            onChange={e => patch('location', e.target.value)}
-            helperText="Enter a country, region, or city"
-          />
-          <TextField
-            label="Radius (km)"
-            type="number"
-            sx={{ flex: 1, minWidth: 120 }}
-            inputProps={{ min: 1 }}
-            value={draft.radius}
-            onChange={e => patch('radius', e.target.value)}
-          />
-        </Box>
+        <DestinationAutocomplete
+          label="Location"
+          required
+          value={draft.location}
+          onSelect={(description) => patch('location', description)}
+          helperText="Enter a country, region, or city"
+        />
       )}
 
       {/* ── Age range ────────────────────────────────────────────────────── */}

@@ -1,11 +1,12 @@
-import React, { useRef, useEffect, useState } from 'react'
+import React, { useRef, useEffect } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import Divider from '@mui/material/Divider'
 import MenuItem from '@mui/material/MenuItem'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import { type CampaignDraft, type CreativeType } from '../../types/campaign'
-import ItineraryFeedAdPreview from './ItineraryFeedAdPreview'
+import { type CampaignDraft, type CreativeType, type BusinessType } from '../../types/campaign'
+import CampaignAdPreview from './CampaignAdPreview'
 
 interface Props {
   draft: CampaignDraft
@@ -13,6 +14,17 @@ interface Props {
 }
 
 const CTA_OPTIONS = ['Learn More', 'Book Now', 'Sign Up', 'Visit Shop']
+
+const BUSINESS_TYPE_OPTIONS: { value: BusinessType; label: string }[] = [
+  { value: 'restaurant', label: 'Restaurant / Cafe' },
+  { value: 'hotel',      label: 'Hotel / Accommodation' },
+  { value: 'tour',       label: 'Tour Operator' },
+  { value: 'experience', label: 'Experience / Attraction' },
+  { value: 'transport',  label: 'Transport / Transfer' },
+  { value: 'shop',       label: 'Shop / Retail' },
+  { value: 'activity',   label: 'Activity / Sport' },
+  { value: 'other',      label: 'Other' },
+]
 
 /** The creative type is fully determined by placement — no user choice needed. */
 const PLACEMENT_TYPE: Record<string, CreativeType> = {
@@ -43,22 +55,7 @@ const StepCreative: React.FC<Props> = ({ draft, patch }) => {
     if (draft.creativeType !== creativeType) patch('creativeType', creativeType)
   }, [draft.placement]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Revoke previous object URL to avoid memory leaks
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  useEffect(() => {
-    if (!draft.assetFile) {
-      setPreviewUrl(null)
-      return
-    }
-    const url = URL.createObjectURL(draft.assetFile)
-    setPreviewUrl(url)
-    return () => URL.revokeObjectURL(url)
-  }, [draft.assetFile])
 
-  // 1:1 preview dimensions for itinerary_feed
-  const previewAspect = draft.placement === 'itinerary_feed' ? '1 / 1'
-    : draft.placement === 'ai_slot' ? '3 / 2'
-    : '9 / 16'
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -103,91 +100,8 @@ const StepCreative: React.FC<Props> = ({ draft, patch }) => {
         )}
       </Box>
 
-      {/* ── Ad preview ── */}
-      {draft.placement === 'itinerary_feed' ? (
-        /* Full card preview — mirrors SponsoredItineraryCard from the mobile app */
-        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-          <ItineraryFeedAdPreview
-            imageUrl={previewUrl}
-            destination={draft.targetDestination || draft.location}
-            primaryText={draft.primaryText}
-            cta={draft.cta}
-          />
-        </Box>
-      ) : previewUrl ? (
-        /* Aspect-ratio frame for video_feed / ai_slot */
-        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-        <Box
-          sx={{
-            aspectRatio: previewAspect,
-            maxWidth: draft.placement === 'video_feed' ? 180 : '100%',
-            maxHeight: 360,
-            overflow: 'hidden',
-            borderRadius: 2,
-            border: '1px solid',
-            borderColor: 'divider',
-            position: 'relative',
-          }}
-        >
-          {creativeType === 'video' ? (
-            <Box
-              component="video"
-              src={previewUrl}
-              muted
-              loop
-              autoPlay
-              playsInline
-              aria-label="Video asset preview"
-              sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-            />
-          ) : (
-            <Box
-              component="img"
-              src={previewUrl}
-              alt="Asset preview"
-              sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
-          )}
-          <Box
-            sx={{
-              position: 'absolute',
-              bottom: 8,
-              left: 8,
-              bgcolor: 'rgba(0,0,0,0.5)',
-              color: '#fff',
-              fontSize: '0.65rem',
-              px: 0.75,
-              py: 0.25,
-              borderRadius: 0.5,
-              lineHeight: 1.4,
-            }}
-          >
-            Sponsored
-          </Box>
-        </Box>
-        </Box>
-      ) : (
-        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-          <Box
-            sx={{
-              aspectRatio: previewAspect,
-              maxWidth: draft.placement === 'video_feed' ? 180 : 320,
-              width: '100%',
-              border: '1px dashed',
-              borderColor: 'divider',
-              borderRadius: 2,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-            aria-label={`${previewAspect} preview placeholder`}
-          >
-            <Typography variant="caption" color="text.secondary">
-              {creativeType === 'video' ? 'Upload a video to preview' : 'Upload an image to preview'}
-            </Typography>
-          </Box>
-        </Box>
-      )}
+      {/* ── Ad preview — full fidelity preview matching what the user will see in-app ── */}
+      <CampaignAdPreview draft={draft} />
 
       <TextField
         label="Primary text"
@@ -217,6 +131,63 @@ const StepCreative: React.FC<Props> = ({ draft, patch }) => {
         onChange={e => patch('landingUrl', e.target.value)}
         placeholder="https://"
       />
+
+      {/* ── AI Slot specific fields ── */}
+      {draft.placement === 'ai_slot' && (
+        <>
+          <Divider>
+            <Typography variant="caption" color="text.secondary">AI Slot Details</Typography>
+          </Divider>
+
+          <TextField
+            select
+            label="Business type"
+            required
+            value={draft.businessType}
+            onChange={e => patch('businessType', e.target.value as BusinessType)}
+            helperText="How your business will be categorised inside the itinerary card"
+          >
+            {BUSINESS_TYPE_OPTIONS.map(o => (
+              <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
+            ))}
+          </TextField>
+
+          <TextField
+            label="Address"
+            value={draft.address}
+            onChange={e => patch('address', e.target.value)}
+            placeholder="123 Main St, Dubrovnik, Croatia"
+            helperText="Business address shown on the promotion card (optional)"
+          />
+
+          <TextField
+            label="Phone"
+            type="tel"
+            value={draft.phone}
+            onChange={e => patch('phone', e.target.value)}
+            placeholder="+1 555 000 0000"
+            helperText="Phone number shown on the promotion card (optional)"
+          />
+
+          <TextField
+            label="Email"
+            type="email"
+            value={draft.email}
+            onChange={e => patch('email', e.target.value)}
+            placeholder="hello@yourbusiness.com"
+            helperText="Email shown on the promotion card (optional)"
+          />
+
+          <TextField
+            label="Promo code"
+            value={draft.promoCode}
+            onChange={e => patch('promoCode', e.target.value)}
+            placeholder="e.g. TRAVEL20"
+            helperText="Discount code displayed to travellers viewing the itinerary (optional)"
+            inputProps={{ style: { textTransform: 'uppercase' } }}
+          />
+        </>
+      )}
     </Box>
   )
 }

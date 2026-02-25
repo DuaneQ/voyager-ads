@@ -87,14 +87,14 @@ describe('StepCreative', () => {
     expect(patch).toHaveBeenCalledWith('assetFile', file)
   })
 
-  it('shows "Upload a video to preview" placeholder for video_feed', () => {
+  it('shows video upload placeholder for video_feed', () => {
     render(<StepCreative draft={{ ...EMPTY_DRAFT, placement: 'video_feed' }} patch={makePatch()} />)
-    expect(screen.getByText(/Upload a video to preview/i)).toBeInTheDocument()
+    expect(screen.getByText(/Upload a video or image/i)).toBeInTheDocument()
   })
 
-  it('shows "Upload an image to preview" placeholder for ai_slot', () => {
+  it('shows image upload placeholder for ai_slot', () => {
     render(<StepCreative draft={{ ...EMPTY_DRAFT, placement: 'ai_slot' }} patch={makePatch()} />)
-    expect(screen.getByText(/Upload an image to preview/i)).toBeInTheDocument()
+    expect(screen.getByText(/Upload a landscape image to preview/i)).toBeInTheDocument()
   })
 
   it('shows the ItineraryFeedAdPreview for itinerary_feed placement', () => {
@@ -106,5 +106,64 @@ describe('StepCreative', () => {
   it('renders character count for primary text', () => {
     render(<StepCreative draft={{ ...EMPTY_DRAFT, primaryText: 'Hello' }} patch={makePatch()} />)
     expect(screen.getByText('5/300')).toBeInTheDocument()
+  })
+
+  describe('ai_slot specific fields', () => {
+    it('shows Business type, Address, Phone, Email, and Promo code fields for ai_slot', () => {
+      render(<StepCreative draft={{ ...EMPTY_DRAFT, placement: 'ai_slot' }} patch={makePatch()} />)
+      expect(screen.getByLabelText(/Business type/i)).toBeInTheDocument()
+      expect(screen.getByLabelText(/Address/i)).toBeInTheDocument()
+      expect(screen.getByLabelText(/Phone/i)).toBeInTheDocument()
+      expect(screen.getByLabelText(/Email/i)).toBeInTheDocument()
+      expect(screen.getByLabelText(/Promo code/i)).toBeInTheDocument()
+    })
+
+    it('does NOT show ai_slot fields for other placements', () => {
+      const placements = ['video_feed', 'itinerary_feed'] as const
+      for (const placement of placements) {
+        const { unmount } = render(<StepCreative draft={{ ...EMPTY_DRAFT, placement }} patch={makePatch()} />)
+        expect(screen.queryByLabelText(/Business type/i)).not.toBeInTheDocument()
+        expect(screen.queryByLabelText(/Address/i)).not.toBeInTheDocument()
+        expect(screen.queryByLabelText(/Phone/i)).not.toBeInTheDocument()
+        expect(screen.queryByLabelText(/Email/i)).not.toBeInTheDocument()
+        expect(screen.queryByLabelText(/Promo code/i)).not.toBeInTheDocument()
+        unmount()
+      }
+    })
+
+    it('calls patch with businessType when changed', () => {
+      const patch = makePatch()
+      render(<StepCreative draft={{ ...EMPTY_DRAFT, placement: 'ai_slot' }} patch={patch} />)
+      // MUI Select renders a hidden input; verify the field is present and shows the current value
+      expect(screen.getByLabelText(/Business type/i)).toBeInTheDocument()
+    })
+
+    it('calls patch with address when changed', () => {
+      const patch = makePatch()
+      render(<StepCreative draft={{ ...EMPTY_DRAFT, placement: 'ai_slot' }} patch={patch} />)
+      fireEvent.change(screen.getByLabelText(/Address/i), { target: { value: '5 Rue de Rivoli, Paris' } })
+      expect(patch).toHaveBeenCalledWith('address', '5 Rue de Rivoli, Paris')
+    })
+
+    it('calls patch with phone when changed', () => {
+      const patch = makePatch()
+      render(<StepCreative draft={{ ...EMPTY_DRAFT, placement: 'ai_slot' }} patch={patch} />)
+      fireEvent.change(screen.getByLabelText(/Phone/i), { target: { value: '+1 555 000 0000' } })
+      expect(patch).toHaveBeenCalledWith('phone', '+1 555 000 0000')
+    })
+
+    it('calls patch with email when changed', () => {
+      const patch = makePatch()
+      render(<StepCreative draft={{ ...EMPTY_DRAFT, placement: 'ai_slot' }} patch={patch} />)
+      fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'hello@bistro.com' } })
+      expect(patch).toHaveBeenCalledWith('email', 'hello@bistro.com')
+    })
+
+    it('calls patch with promoCode when changed', () => {
+      const patch = makePatch()
+      render(<StepCreative draft={{ ...EMPTY_DRAFT, placement: 'ai_slot' }} patch={patch} />)
+      fireEvent.change(screen.getByLabelText(/Promo code/i), { target: { value: 'TRAVEL20' } })
+      expect(patch).toHaveBeenCalledWith('promoCode', 'TRAVEL20')
+    })
   })
 })

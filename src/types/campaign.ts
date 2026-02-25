@@ -3,6 +3,7 @@ export type Objective = 'Awareness' | 'Traffic'
 export type BudgetType = 'daily' | 'lifetime'
 export type BillingModel = 'cpm' | 'cpc'
 export type CreativeType = 'image' | 'video'
+export type BusinessType = 'restaurant' | 'hotel' | 'tour' | 'experience' | 'transport' | 'shop' | 'activity' | 'other'
 
 export interface CampaignDraft {
   // Step 1 — Details
@@ -19,6 +20,12 @@ export interface CampaignDraft {
   primaryText: string
   cta: string
   landingUrl: string
+  // AI Slot specific
+  businessType: BusinessType | ''
+  address: string              // business address shown on the promotion card
+  phone: string                // phone number shown on the promotion card
+  email: string                // email shown on the promotion card
+  promoCode: string            // optional discount/promo code
 
   // Step 3 — Targeting
   audienceName: string
@@ -34,6 +41,10 @@ export interface CampaignDraft {
   targetTravelStartDate: string   // YYYY-MM-DD; converted to startDay epoch ms server-side
   targetTravelEndDate: string     // YYYY-MM-DD; converted to endDay epoch ms server-side
   targetGender: string            // '' = all; matches itinerary gender preference field
+  // AI Slot specific targeting — will match fields stored on AI itinerary documents
+  targetTripTypes: string[]          // [] = all; e.g. ['adventure', 'romantic']
+  targetActivityPreferences: string[] // [] = all; e.g. ['Cultural', 'Nightlife']
+  targetTravelStyles: string[]        // [] = all; e.g. ['luxury', 'mid-range']
 
   // Step 4 — Budget
   budgetType: BudgetType
@@ -56,6 +67,11 @@ export const EMPTY_DRAFT: CampaignDraft = {
   primaryText: '',
   cta: 'Learn More',
   landingUrl: '',
+  businessType: '',
+  address: '',
+  phone: '',
+  email: '',
+  promoCode: '',
   audienceName: '',
   location: '',
   radius: '',
@@ -68,6 +84,9 @@ export const EMPTY_DRAFT: CampaignDraft = {
   targetTravelStartDate: '',
   targetTravelEndDate: '',
   targetGender: '',
+  targetTripTypes: [],
+  targetActivityPreferences: [],
+  targetTravelStyles: [],
   budgetType: 'daily',
   budgetAmount: '',
   billingModel: 'cpm',

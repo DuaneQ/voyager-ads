@@ -92,15 +92,58 @@ describe('CampaignAdPreview', () => {
       )
       expect(screen.getByText('Top winter escapes')).toBeInTheDocument()
     })
-  })
 
-  describe('StepReview integration', () => {
-    it('renders the Ad Preview section on the review step', async () => {
-      // Lazy import to avoid circular issues with StepReview
-      const { default: StepReview } = await import('../../../components/campaign/StepReview')
-      const { vi } = await import('vitest')
-      render(<StepReview draft={EMPTY_DRAFT} patch={vi.fn()} />)
-      expect(screen.getByText('Ad Preview')).toBeInTheDocument()
+
+    it('shows the business type chip when set', () => {
+      render(
+        <CampaignAdPreview
+          draft={{ ...EMPTY_DRAFT, placement: 'ai_slot', businessType: 'restaurant' }}
+        />
+      )
+      expect(screen.getByText('restaurant')).toBeInTheDocument()
+    })
+
+    it('shows the promo code chip when set', () => {
+      render(
+        <CampaignAdPreview
+          draft={{ ...EMPTY_DRAFT, placement: 'ai_slot', promoCode: 'TRAVEL20' }}
+        />
+      )
+      expect(screen.getByText(/TRAVEL20/)).toBeInTheDocument()
+    })
+
+    it('does not show promo chip when promoCode is empty', () => {
+      render(<CampaignAdPreview draft={{ ...EMPTY_DRAFT, placement: 'ai_slot', promoCode: '' }} />)
+      expect(screen.queryByText(/🏷/)).not.toBeInTheDocument()
+    })
+
+    it('shows image upload placeholder when no asset file', () => {
+      render(<CampaignAdPreview draft={{ ...EMPTY_DRAFT, placement: 'ai_slot' }} />)
+      expect(screen.getByText(/Upload a landscape image to preview/i)).toBeInTheDocument()
+    })
+
+    it('shows "No contact info" when address, phone and email are all empty', () => {
+      render(<CampaignAdPreview draft={{ ...EMPTY_DRAFT, placement: 'ai_slot', address: '', phone: '', email: '' }} />)
+      expect(screen.getByText('No contact info')).toBeInTheDocument()
+    })
+
+    it('shows contact details when address, phone and email are provided', () => {
+      render(
+        <CampaignAdPreview
+          draft={{
+            ...EMPTY_DRAFT, placement: 'ai_slot',
+            address: '1 Beach Rd', phone: '+1 555 0000', email: 'hi@place.com',
+          }}
+        />
+      )
+      expect(screen.getByText(/1 Beach Rd/)).toBeInTheDocument()
+      expect(screen.getByText(/\+1 555 0000/)).toBeInTheDocument()
+      expect(screen.getByText(/hi@place.com/)).toBeInTheDocument()
+    })
+
+    it('falls back to "LEARN MORE" when cta is empty', () => {
+      render(<CampaignAdPreview draft={{ ...EMPTY_DRAFT, placement: 'ai_slot', cta: '' }} />)
+      expect(screen.getByText('LEARN MORE')).toBeInTheDocument()
     })
   })
 })

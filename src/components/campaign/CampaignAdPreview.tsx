@@ -11,7 +11,6 @@
  */
 import React, { useEffect, useState } from 'react'
 import Box from '@mui/material/Box'
-import Chip from '@mui/material/Chip'
 import Typography from '@mui/material/Typography'
 import FavoriteIcon from '@mui/icons-material/Favorite'
 import ShareIcon from '@mui/icons-material/Share'
@@ -58,9 +57,13 @@ const VideoFeedPreview: React.FC<{ imageUrl: string | null; primaryText: string;
       {/* Asset or placeholder */}
       {imageUrl ? (
         <Box
-          component="img"
+          component="video"
           src={imageUrl}
-          alt="Ad creative"
+          muted
+          loop
+          autoPlay
+          playsInline
+          aria-label="Ad creative"
           sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
         />
       ) : (
@@ -146,12 +149,28 @@ const VideoFeedPreview: React.FC<{ imageUrl: string | null; primaryText: string;
   </Box>
 )
 
-// ─── AI Slot (landscape content card) ────────────────────────────────────────
+// ─── AI Slot (image on top, text card below) ─────────────────────────────────
 
-const AiSlotPreview: React.FC<{ imageUrl: string | null; primaryText: string; cta: string }> = ({
+interface AiSlotPreviewProps {
+  imageUrl: string | null
+  primaryText: string
+  cta: string
+  businessType: string
+  promoCode: string
+  address: string
+  phone: string
+  email: string
+}
+
+const AiSlotPreview: React.FC<AiSlotPreviewProps> = ({
   imageUrl,
   primaryText,
   cta,
+  businessType,
+  promoCode,
+  address,
+  phone,
+  email,
 }) => (
   <Box
     sx={{ maxWidth: 420, mx: 'auto', width: '100%' }}
@@ -167,64 +186,119 @@ const AiSlotPreview: React.FC<{ imageUrl: string | null; primaryText: string; ct
 
     <Box
       sx={{
-        bgcolor: '#fff',
         borderRadius: 3,
-        border: '1px solid rgba(26,115,232,0.2)',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
         overflow: 'hidden',
+        border: '1px solid',
+        borderColor: 'divider',
+        boxShadow: '0 4px 16px rgba(0,0,0,0.10)',
+        bgcolor: '#fff',
       }}
     >
-      {/* Image — 3:2 landscape */}
-      <Box sx={{ position: 'relative', width: '100%', aspectRatio: '3 / 2', bgcolor: '#e8f0fe' }}>
+      {/* ── Image — full bleed, nothing on top of it ── */}
+      <Box
+        sx={{
+          position: 'relative',
+          width: '100%',
+          bgcolor: '#1a1a2e',
+        }}
+      >
         {imageUrl ? (
           <Box
             component="img"
             src={imageUrl}
             alt="Ad creative"
-            sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            sx={{ width: '100%', height: 'auto', display: 'block' }}
           />
         ) : (
           <Box
             sx={{
-              width: '100%', height: '100%', display: 'flex',
-              alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 1,
-              border: '2px dashed #bfdbfe',
+              width: '100%', minHeight: 200,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexDirection: 'column', gap: 1,
             }}
           >
-            <Typography variant="caption" color="text.disabled" sx={{ textAlign: 'center', px: 2 }}>
+            <SmartDisplayOutlinedIcon sx={{ fontSize: 36, color: '#334155', opacity: 0.4 }} />
+            <Typography variant="caption" sx={{ color: '#475569', textAlign: 'center', px: 3 }}>
               Upload a landscape image to preview
             </Typography>
           </Box>
         )}
 
-        {/* Sponsored + AI badge */}
+        {/* Sponsored + AI Pick badges — pinned top-left only */}
         <Box sx={{ position: 'absolute', top: 8, left: 8, display: 'flex', gap: 0.75 }}>
           <Box sx={{ bgcolor: 'rgba(0,0,0,0.52)', borderRadius: '4px', px: '6px', py: '2px' }}>
             <Typography sx={{ color: '#fff', fontSize: 10, fontWeight: 500 }}>Sponsored</Typography>
           </Box>
           <Box sx={{ bgcolor: '#7c3aed', borderRadius: '4px', px: '6px', py: '2px', display: 'flex', alignItems: 'center', gap: '3px' }}>
             <SmartDisplayOutlinedIcon sx={{ fontSize: 11, color: '#fff' }} />
-            <Typography sx={{ color: '#fff', fontSize: 10, fontWeight: 500 }}>AI Pick</Typography>
+            <Typography sx={{ color: '#fff', fontSize: 10, fontWeight: 600 }}>AI Pick</Typography>
           </Box>
         </Box>
       </Box>
 
-      {/* Body */}
-      <Box sx={{ px: 2, py: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1 }}>
-        <Typography
-          sx={{
-            fontSize: 13, color: '#213547', fontWeight: 600, lineHeight: 1.4,
-            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-            flex: 1,
-          }}
-        >
-          {primaryText || <Box component="span" sx={{ color: '#cbd5e1', fontStyle: 'italic', fontWeight: 400 }}>Primary text will appear here</Box>}
-        </Typography>
-        <Chip
-          label={cta || 'Learn More'}
-          size="small"
-          sx={{ bgcolor: '#1a73e8', color: '#fff', fontWeight: 700, fontSize: 11, flexShrink: 0 }}
-        />
+      {/* ── Text card beneath the image ── */}
+      <Box sx={{ px: 2, py: 1.5, display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+        {/* Headline — no truncation */}
+        {primaryText ? (
+          <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#213547', lineHeight: 1.4 }}>
+            {primaryText}
+          </Typography>
+        ) : (
+          <Typography sx={{ fontSize: 13, color: '#94a3b8', fontStyle: 'italic' }}>
+            Your headline will appear here
+          </Typography>
+        )}
+
+        {/* Bottom row — contact info left, chips + CTA right */}
+        <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-end', borderTop: '1px solid', borderColor: 'divider', pt: 1 }}>
+          {/* Left: contact info */}
+          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0.4, alignItems: 'flex-start' }}>
+            {address && (
+              <Typography sx={{ fontSize: 11, color: '#64748b', textAlign: 'left' }}>📍 {address}</Typography>
+            )}
+            {phone && (
+              <Typography sx={{ fontSize: 11, color: '#64748b', textAlign: 'left' }}>📞 {phone}</Typography>
+            )}
+            {email && (
+              <Typography sx={{ fontSize: 11, color: '#64748b', textAlign: 'left' }}>✉️ {email}</Typography>
+            )}
+            {!address && !phone && !email && (
+              <Typography sx={{ fontSize: 11, color: '#cbd5e1', fontStyle: 'italic' }}>No contact info</Typography>
+            )}
+          </Box>
+
+          {/* Right: chips + CTA stacked */}
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0.75, flexShrink: 0 }}>
+            {(businessType || promoCode) && (
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, justifyContent: 'flex-end' }}>
+                {businessType && (
+                  <Box sx={{ bgcolor: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '10px', px: 1, py: '3px' }}>
+                    <Typography sx={{ fontSize: 11, fontWeight: 500, color: '#475569', textTransform: 'capitalize' }}>
+                      {businessType}
+                    </Typography>
+                  </Box>
+                )}
+                {promoCode && (
+                  <Box sx={{ bgcolor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '10px', px: 1, py: '3px' }}>
+                    <Typography sx={{ fontSize: 11, fontWeight: 700, color: '#1d4ed8', letterSpacing: 0.5 }}>
+                      🏷 {promoCode.toUpperCase()}
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+            )}
+            <Box
+              sx={{
+                bgcolor: '#1976d2', color: '#fff',
+                fontSize: 12, fontWeight: 700, letterSpacing: 0.5,
+                px: 2, py: 0.75, borderRadius: '6px',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {(cta || 'Learn More').toUpperCase()}
+            </Box>
+          </Box>
+        </Box>
       </Box>
     </Box>
   </Box>
@@ -257,7 +331,18 @@ const CampaignAdPreview: React.FC<Props> = ({ draft }) => {
     return <VideoFeedPreview imageUrl={previewUrl} primaryText={draft.primaryText} cta={draft.cta} />
   }
 
-  return <AiSlotPreview imageUrl={previewUrl} primaryText={draft.primaryText} cta={draft.cta} />
+  return (
+    <AiSlotPreview
+      imageUrl={previewUrl}
+      primaryText={draft.primaryText}
+      cta={draft.cta}
+      businessType={draft.businessType}
+      promoCode={draft.promoCode}
+      address={draft.address}
+      phone={draft.phone}
+      email={draft.email}
+    />
+  )
 }
 
 export default CampaignAdPreview

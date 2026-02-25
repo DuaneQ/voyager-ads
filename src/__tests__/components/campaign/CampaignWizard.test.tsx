@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { screen, fireEvent } from '@testing-library/react'
 import { render } from '../../../testUtils/test-utils'
 import { AppAlertProvider } from '../../../context/AppAlertContext'
@@ -15,6 +15,9 @@ function renderWizard() {
 }
 
 describe('CampaignWizard', () => {
+  // Ensure DestinationAutocomplete degrades to plain TextField
+  beforeEach(() => vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', ''))
+  afterEach(() => vi.unstubAllEnvs())
   it('renders the stepper with all 5 step labels', () => {
     renderWizard()
     expect(screen.getByText('Details')).toBeInTheDocument()

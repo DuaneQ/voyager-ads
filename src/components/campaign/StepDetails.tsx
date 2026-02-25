@@ -156,7 +156,7 @@ const StepDetails: React.FC<Props> = ({ draft, patch }) => {
               >
                 {p.ratio}
               </Box>
-              <Box>
+              <Box sx={{ textAlign: 'left' }}>
                 <Typography variant="body2" fontWeight={600}>{p.label}</Typography>
                 <Typography variant="caption" color="text.secondary">{p.desc}</Typography>
               </Box>
@@ -168,17 +168,17 @@ const StepDetails: React.FC<Props> = ({ draft, patch }) => {
       {/* Contextual placement detail panel */}
       <Paper
         variant="outlined"
-        sx={{ p: 2, borderColor: 'primary.main', borderRadius: 2, bgcolor: 'rgba(26,115,232,0.03)' }}
+        sx={{ p: 2, borderColor: 'primary.main', borderRadius: 2, bgcolor: 'rgba(26,115,232,0.03)', textAlign: 'left' }}
         role="note"
         aria-label={`${draft.placement} placement details`}
       >
-        <Typography variant="body2" fontWeight={500} sx={{ mb: 1 }}>
+        <Typography variant="body2" fontWeight={500} sx={{ mb: 1, textAlign: 'left' }}>
           {placementDetail.headline}
         </Typography>
-        <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
+        <Box component="ul" sx={{ m: 0, pl: 2.5, textAlign: 'left' }}>
           {placementDetail.bullets.map(b => (
             <Box component="li" key={b} sx={{ mb: 0.25 }}>
-              <Typography variant="caption" color="text.secondary">{b}</Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'left' }}>{b}</Typography>
             </Box>
           ))}
         </Box>

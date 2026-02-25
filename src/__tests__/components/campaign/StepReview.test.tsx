@@ -116,4 +116,63 @@ describe('StepReview', () => {
     // interests row should show em dash for empty string
     expect(screen.getAllByText('—').length).toBeGreaterThan(0)
   })
+
+  it('opens the policy modal when Enter is pressed on the policy link', () => {
+    render(<StepReview draft={fullDraft} patch={vi.fn()} />)
+    const policyLink = screen.getByRole('button', { name: /TravalPass Advertising Policy/i })
+    fireEvent.keyDown(policyLink, { key: 'Enter' })
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
+
+  describe('ai_slot targeting rows', () => {
+    const aiDraft = {
+      ...fullDraft,
+      placement: 'ai_slot' as const,
+      targetTripTypes: ['adventure', 'romantic'],
+      targetActivityPreferences: ['Cultural', 'Nightlife'],
+      targetTravelStyles: ['luxury'],
+    }
+
+    it('shows Trip types chips for ai_slot when non-empty', () => {
+      render(<StepReview draft={aiDraft} patch={vi.fn()} />)
+      expect(screen.getByText('Trip types')).toBeInTheDocument()
+      expect(screen.getByText('adventure')).toBeInTheDocument()
+      expect(screen.getByText('romantic')).toBeInTheDocument()
+    })
+
+    it('shows Activities chips for ai_slot when non-empty', () => {
+      render(<StepReview draft={aiDraft} patch={vi.fn()} />)
+      expect(screen.getByText('Activities')).toBeInTheDocument()
+      expect(screen.getByText('Cultural')).toBeInTheDocument()
+      expect(screen.getByText('Nightlife')).toBeInTheDocument()
+    })
+
+    it('shows Travel styles chips for ai_slot when non-empty', () => {
+      render(<StepReview draft={aiDraft} patch={vi.fn()} />)
+      expect(screen.getByText('Travel styles')).toBeInTheDocument()
+      expect(screen.getByText('luxury')).toBeInTheDocument()
+    })
+
+    it('does NOT show Trip types row when array is empty', () => {
+      render(<StepReview draft={{ ...aiDraft, targetTripTypes: [] }} patch={vi.fn()} />)
+      expect(screen.queryByText('Trip types')).not.toBeInTheDocument()
+    })
+
+    it('does NOT show Activities row when array is empty', () => {
+      render(<StepReview draft={{ ...aiDraft, targetActivityPreferences: [] }} patch={vi.fn()} />)
+      expect(screen.queryByText('Activities')).not.toBeInTheDocument()
+    })
+
+    it('does NOT show Travel styles row when array is empty', () => {
+      render(<StepReview draft={{ ...aiDraft, targetTravelStyles: [] }} patch={vi.fn()} />)
+      expect(screen.queryByText('Travel styles')).not.toBeInTheDocument()
+    })
+
+    it('does NOT show targeting rows for non-ai_slot placement', () => {
+      render(<StepReview draft={{ ...aiDraft, placement: 'itinerary_feed' }} patch={vi.fn()} />)
+      expect(screen.queryByText('Trip types')).not.toBeInTheDocument()
+      expect(screen.queryByText('Activities')).not.toBeInTheDocument()
+      expect(screen.queryByText('Travel styles')).not.toBeInTheDocument()
+    })
+  })
 })
