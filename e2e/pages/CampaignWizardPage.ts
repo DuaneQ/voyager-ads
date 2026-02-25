@@ -19,7 +19,8 @@ export class CampaignWizardPage {
 
   async goto(baseUrl = process.env.PLAYWRIGHT_BASE_URL || process.env.BASE_URL || 'http://localhost:5173') {
     await this.page.goto(`${baseUrl}/create-campaign`);
-    await this.page.waitForLoadState('networkidle');
+    // Wait for the wizard to render (handles ProtectedRoute spinner + lazy-loaded chunk)
+    await this.page.waitForSelector('[data-testid="campaign-wizard"]', { state: 'visible', timeout: 20_000 });
   }
 
   async selectPlacement(name: string) {

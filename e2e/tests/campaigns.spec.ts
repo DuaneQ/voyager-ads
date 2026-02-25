@@ -46,7 +46,9 @@ test.describe('Campaign Wizard - placements', () => {
     await wizard.agreePolicy();
     await wizard.submit();
 
-    await expect(page.locator('text=Campaign submitted!').first()).toBeVisible();
+    // Wizard redirects to /dashboard after submit; success banner confirms submission.
+    await page.waitForURL(/\/dashboard/, { timeout: 15_000 });
+    await expect(page.locator('[role="alert"]').first()).toContainText('Campaign submitted');
   });
 
   test('Create Itinerary Feed campaign flow', async ({ page }) => {
@@ -77,7 +79,10 @@ test.describe('Campaign Wizard - placements', () => {
     await wizard.next(); // to Review
     await wizard.agreePolicy();
     await wizard.submit();
-    await expect(page.locator('text=Campaign submitted!').first()).toBeVisible();
+
+    // Wizard redirects to /dashboard after submit; success banner confirms submission.
+    await page.waitForURL(/\/dashboard/, { timeout: 15_000 });
+    await expect(page.locator('[role="alert"]').first()).toContainText('Campaign submitted');
   });
 
   test('Create AI Slot campaign flow', async ({ page }) => {
@@ -109,6 +114,9 @@ test.describe('Campaign Wizard - placements', () => {
     await wizard.next(); // to Review
     await wizard.agreePolicy();
     await wizard.submit();
-    await expect(page.locator('text=Campaign submitted!').first()).toBeVisible();
+
+    // Wizard redirects to /dashboard after submit; success banner confirms submission.
+    await page.waitForURL(/\/dashboard/, { timeout: 15_000 });
+    await expect(page.locator('[role="alert"]').first()).toContainText('Campaign submitted');
   });
 });
