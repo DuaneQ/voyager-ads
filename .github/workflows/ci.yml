@@ -53,6 +53,8 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
 
       - name: Deploy preview to Firebase Hosting (travalpass-ads-dev)
         uses: FirebaseExtended/action-hosting-deploy@v0
@@ -100,6 +102,8 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
 
       - name: Deploy to Firebase Hosting production (travalpass-ads)
         uses: FirebaseExtended/action-hosting-deploy@v0
