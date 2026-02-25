@@ -6,6 +6,7 @@ vi.mock('firebase/auth', () => ({
   sendEmailVerification: vi.fn(),
   signInWithPopup: vi.fn(),
   sendPasswordResetEmail: vi.fn(),
+  signOut: vi.fn(),
   // Use a real function (not an arrow) so it can be used as a constructor with `new`
   GoogleAuthProvider: function GoogleAuthProvider() { return {} },
 }))
@@ -82,6 +83,12 @@ describe('FirebaseAuthService', () => {
     unsubscribe()
     cbRef({ uid: 'after-unsub' })
     expect(handler).toHaveBeenCalledTimes(2)
+  })
+
+  it('signOut delegates to firebase signOut', async () => {
+    ;(firebaseAuth.signOut as any).mockResolvedValue(undefined)
+    await expect(svc.signOut()).resolves.toBeUndefined()
+    expect(firebaseAuth.signOut).toHaveBeenCalledWith(fakeAuth)
   })
 
   afterEach(() => {

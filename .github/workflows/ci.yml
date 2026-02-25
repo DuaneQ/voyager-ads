@@ -55,6 +55,7 @@ jobs:
         run: npm run build
         env:
           VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
+          VITE_E2E_AUTH_BYPASS: 'true'
 
       - name: Deploy preview to Firebase Hosting (travalpass-ads-dev)
         uses: FirebaseExtended/action-hosting-deploy@v0

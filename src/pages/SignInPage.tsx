@@ -13,6 +13,7 @@ import {
 } from '@mui/material'
 import Nav from '../components/common/Nav'
 import { authService } from '../services/auth/authServiceInstance'
+import useAuthStore from '../store/authStore'
 
 type Mode = 'signin' | 'signup' | 'reset'
 
@@ -29,6 +30,15 @@ const SignInPage: React.FC = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const from = (location.state as { from?: string })?.from ?? '/dashboard'
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const isInitialized = useAuthStore((s) => s.isInitialized)
+
+  // Redirect away immediately if already signed in
+  React.useEffect(() => {
+    if (isInitialized && isAuthenticated) {
+      navigate(from, { replace: true })
+    }
+  }, [isInitialized, isAuthenticated, navigate, from])
 
   const [mode, setMode] = useState<Mode>('signin')
   const [email, setEmail] = useState('')

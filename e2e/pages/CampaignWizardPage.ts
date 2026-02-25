@@ -23,51 +23,15 @@ export class CampaignWizardPage {
   }
 
   async selectPlacement(name: string) {
-    // Try a few strategies to cover common implementations
-    if (await this.placementSelect.count()) {
-      await this.placementSelect.selectOption({ label: name });
-      return;
-    }
+    // Convert label to the data-testid slug used by StepDetails placement cards.
+    // e.g. "Video Feed" → "placement-video-feed",
+    //      "AI Slots"   → "placement-ai-slots"
+    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+    const card = this.page.locator(`[data-testid="placement-${slug}"]`)
 
-    // fallback: click the visible label text for the placement (StepDetails uses a clickable Box)
-    // scope the search to the StepDetails group to avoid matching similar text on other pages
-    const stepGroup = this.page.getByRole('group', { name: /Step 1 of .*: Details/i }).first();
-    if (await stepGroup.count()) {
-      // allow partial/substring matches (more resilient to small label changes)
-      const byText = stepGroup.getByText(new RegExp(`${name}`, 'i')).first();
-      if (await byText.count()) {
-        await byText.click();
-        return;
-      }
-      // try any button inside stepGroup with matching text
-      const btn = stepGroup.getByRole('button', { name: new RegExp(`${name}`, 'i') }).first();
-      if (await btn.count()) {
-        await btn.click();
-        return;
-      }
-    }
-    // fallback to global text search if scoped search fails (allow substring)
-    const byTextGlobal = this.page.getByText(new RegExp(`${name}`, 'i')).first();
-    if (await byTextGlobal.count()) {
-      await byTextGlobal.click();
-      return;
-    }
-
-    const radio = this.page.getByLabel(new RegExp(name, 'i'));
-    if (await radio.count()) {
-      await radio.first().click();
-      return;
-    }
-
-    // try data-testid-based fallback (placement identifiers)
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-    const byTestId = this.page.locator(`[data-testid="placement-${slug}"]`).first();
-    if (await byTestId.count()) {
-      await byTestId.click();
-      return;
-    }
-
-    throw new Error(`Placement selector for "${name}" not found; update selector in CampaignWizardPage`);
+    // Wait up to 10 s for the card to be visible (handles slow cold-start renders)
+    await card.waitFor({ state: 'visible', timeout: 10_000 })
+    await card.click()
   }
 
   async next() {

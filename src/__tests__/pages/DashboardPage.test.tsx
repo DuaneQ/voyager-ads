@@ -1,6 +1,6 @@
 import React from 'react'
 import { render, screen } from '@testing-library/react'
-import { describe, it } from 'vitest'
+import { describe, it, vi } from 'vitest'
 // Mock Nav to avoid rendering the site chrome during the test
 vi.mock('../../components/common/Nav', () => ({ __esModule: true, default: () => <div /> }))
 import DashboardPage from '../../pages/DashboardPage'

@@ -5,6 +5,20 @@ import { AppAlertProvider } from '../../../context/AppAlertContext'
 import CampaignWizard from '../../../components/campaign/CampaignWizard'
 import * as useCreateCampaignModule from '../../../hooks/useCreateCampaign'
 import { EMPTY_DRAFT } from '../../../types/campaign'
+import type { User } from 'firebase/auth'
+
+vi.mock('../../../store/authStore', () => ({
+  default: (selector: (s: { user: User | null }) => unknown) =>
+    selector({ user: { uid: 'test-user' } as User }),
+}))
+
+vi.mock('../../../repositories/campaignRepositoryInstance', () => ({
+  campaignRepository: {
+    create: vi.fn().mockResolvedValue({ id: 'new-campaign' }),
+    getAllByUser: vi.fn().mockResolvedValue([]),
+    update: vi.fn().mockResolvedValue(undefined),
+  },
+}))
 
 function renderWizard() {
   return render(

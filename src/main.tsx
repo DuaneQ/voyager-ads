@@ -29,10 +29,10 @@ async function renderApp() {
   )
 }
 
-// Dev-only: optional Playwright bypass for auth to stabilize E2E.
-// This is gated to run only when explicitly enabled via localStorage by tests
-// and never runs in production builds.
-if (import.meta.env.MODE !== 'production' && typeof window !== 'undefined') {
+// E2E-only: optional Playwright bypass for auth to stabilize E2E.
+// Enabled at build time via VITE_E2E_AUTH_BYPASS=true (injected by CI preview
+// build only — never set in the production deploy step).
+if (import.meta.env.VITE_E2E_AUTH_BYPASS === 'true' && typeof window !== 'undefined') {
   const bypass = window.localStorage.getItem('PLAYWRIGHT_BYPASS_AUTH')
   const email = window.localStorage.getItem('PLAYWRIGHT_BYPASS_EMAIL')
   const password = window.localStorage.getItem('PLAYWRIGHT_BYPASS_PASSWORD')

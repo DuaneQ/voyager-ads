@@ -82,7 +82,7 @@ export class FirestoreCampaignRepository implements ICampaignRepository {
         id: d.id,
         uid: raw.uid as string,
         status: raw.status as CampaignStatus,
-        isUnderReview: raw.isUnderReview as boolean ?? true,
+        isUnderReview: (raw.isUnderReview ?? true) as boolean,
         // Convert Firestore Timestamps to ISO strings at the boundary
         createdAt: (raw.createdAt as Timestamp | null)?.toDate().toISOString() ?? '',
         updatedAt: (raw.updatedAt as Timestamp | null)?.toDate().toISOString() ?? '',

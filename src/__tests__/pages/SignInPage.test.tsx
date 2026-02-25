@@ -15,22 +15,36 @@ vi.mock('../../services/auth/authServiceInstance', () => ({
 // Mock Nav to avoid rendering app chrome in unit tests
 vi.mock('../../components/common/Nav', () => ({ __esModule: true, default: () => <div /> }))
 
+// Default: not yet authenticated; individual tests can override via mockImplementation
+vi.mock('../../store/authStore', () => ({
+  default: vi.fn((selector: (s: { isAuthenticated: boolean; isInitialized: boolean }) => unknown) =>
+    selector({ isAuthenticated: false, isInitialized: true })
+  ),
+}))
+
+// Shared navigate mock — stable reference so redirect tests can assert on it
+const mockNavigate = vi.fn()
+
 // Keep router hooks simple for the component
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom')
   return {
     ...actual,
-    useNavigate: () => vi.fn(),
+    useNavigate: () => mockNavigate,
     useLocation: () => ({ state: {} }),
   }
 })
 
 import SignInPage from '../../pages/SignInPage'
 import { authService } from '../../services/auth/authServiceInstance'
+import useAuthStore from '../../store/authStore'
 import { MemoryRouter } from 'react-router-dom'
 
 describe('SignInPage', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockNavigate.mockReset()
+  })
 
   it('renders sign in heading and google button', () => {
     render(<SignInPage />, { wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter> })
@@ -103,5 +117,22 @@ describe('SignInPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /Send reset email/i }))
 
     await waitFor(() => expect(screen.getByText(/Password reset email sent/i)).toBeInTheDocument())
+  })
+
+  it('redirects to /dashboard when already authenticated on mount', async () => {
+    ;(useAuthStore as ReturnType<typeof vi.fn>).mockImplementation(
+      (selector: (s: { isAuthenticated: boolean; isInitialized: boolean }) => unknown) =>
+        selector({ isAuthenticated: true, isInitialized: true })
+    )
+
+    render(<SignInPage />, { wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter> })
+
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/dashboard', { replace: true }))
+
+    // Restore default
+    ;(useAuthStore as ReturnType<typeof vi.fn>).mockImplementation(
+      (selector: (s: { isAuthenticated: boolean; isInitialized: boolean }) => unknown) =>
+        selector({ isAuthenticated: false, isInitialized: true })
+    )
   })
 })
