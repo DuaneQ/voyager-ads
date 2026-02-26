@@ -1,13 +1,15 @@
 import React, { useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import Tooltip from '@mui/material/Tooltip'
 import Step from '@mui/material/Step'
 import StepLabel from '@mui/material/StepLabel'
 import Stepper from '@mui/material/Stepper'
-import Typography from '@mui/material/Typography'
 import { useCreateCampaign } from '../../hooks/useCreateCampaign'
 import { useAppAlert } from '../../context/AppAlertContext'
 import { type CampaignDraft } from '../../types/campaign'
+import { TEST_DRAFT } from '../../__tests__/utils/campaignTestFixtures'
 import StepDetails from './StepDetails'
 import StepCreative from './StepCreative'
 import StepTargeting from './StepTargeting'
@@ -43,28 +45,48 @@ function isStepValid(step: number, draft: CampaignDraft): boolean {
 const CampaignWizard: React.FC = () => {
   const { step, draft, patch, next, back, submit, reset, submitted, submitError } = useCreateCampaign()
   const { showError } = useAppAlert()
+  const navigate = useNavigate()
   const isLast = step === STEP_LABELS.length - 1
   const isValid = isStepValid(step, draft)
+
+  const fillTestData = import.meta.env.MODE !== 'production'
+    ? () => {
+        (Object.keys(TEST_DRAFT) as (keyof CampaignDraft)[]).forEach((key) => {
+          patch(key, TEST_DRAFT[key] as CampaignDraft[typeof key])
+        })
+      }
+    : undefined
 
   // Surface async submit errors through the global Snackbar
   useEffect(() => {
     if (submitError) showError(submitError)
   }, [submitError, showError])
 
-  if (submitted) {
-    return (
-      <Box sx={{ textAlign: 'center', py: 6 }} role="status" aria-live="polite">
-        <Typography variant="h2" gutterBottom>Campaign submitted!</Typography>
-        <Typography color="text.secondary" sx={{ mb: 3 }}>
-          Your campaign is under review. We'll notify you when it's approved and live.
-        </Typography>
-        <Button variant="contained" onClick={reset}>Create another campaign</Button>
-      </Box>
-    )
-  }
+  // Redirect to dashboard after successful submission, carrying a flag to trigger the success banner
+  useEffect(() => {
+    if (submitted) {
+      reset()
+      navigate('/dashboard', { state: { submitted: true } })
+    }
+  }, [submitted, navigate, reset])
 
   return (
-    <Box>
+    <Box data-testid="campaign-wizard">
+      {fillTestData && (
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+          <Tooltip title="Fills all wizard steps with realistic test data (dev only)">
+            <Button
+              size="small"
+              variant="outlined"
+              color="warning"
+              onClick={fillTestData}
+              data-testid="fill-test-data"
+            >
+              Fill test data
+            </Button>
+          </Tooltip>
+        </Box>
+      )}
       <Stepper activeStep={step} alternativeLabel sx={{ mb: 4 }}>
         {STEP_LABELS.map((label, i) => (
           <Step key={label} completed={i < step}>

@@ -121,6 +121,7 @@ const StepDetails: React.FC<Props> = ({ draft, patch }) => {
           {PLACEMENTS.map(p => (
             <Box
               key={p.value}
+              data-testid={`placement-${p.label.toLowerCase().replace(/\s+/g, '-')}`}
               sx={{
                 border: '1px solid',
                 borderColor: draft.placement === p.value ? 'primary.main' : 'divider',

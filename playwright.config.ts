@@ -26,6 +26,9 @@ export default defineConfig({
     baseURL: previewUrl ?? 'http://localhost:5173',
     screenshot: 'only-on-failure',
     trace: 'on-first-retry',
+    // Optionally provide a storage state file path via env var to run tests
+    // with an authenticated session: PLAYWRIGHT_STORAGE_STATE=./e2e/.auth/storageState.json
+    storageState: process.env.PLAYWRIGHT_STORAGE_STATE || undefined,
   },
 
   projects: [

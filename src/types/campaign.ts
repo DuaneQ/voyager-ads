@@ -1,4 +1,5 @@
 export type Placement = 'video_feed' | 'itinerary_feed' | 'ai_slot'
+export type CampaignStatus = 'draft' | 'active' | 'paused' | 'completed'
 export type Objective = 'Awareness' | 'Traffic'
 export type BudgetType = 'daily' | 'lifetime'
 export type BillingModel = 'cpm' | 'cpc'
@@ -91,4 +92,33 @@ export const EMPTY_DRAFT: CampaignDraft = {
   budgetAmount: '',
   billingModel: 'cpm',
   agreePolicy: false,
+}
+
+// ─── Persisted Campaign ───────────────────────────────────────────────────────
+
+/**
+ * CampaignData is the Firestore-safe subset of CampaignDraft.
+ * `assetFile` (binary File object) is intentionally excluded — files are uploaded
+ * to Firebase Storage separately and the resulting URL stored as `assetUrl`.
+ */
+export type CampaignData = Omit<CampaignDraft, 'assetFile'> & {
+  assetUrl: string | null
+}
+
+/**
+ * Campaign is the fully persisted document shape as returned from Firestore.
+ * Timestamps are stored as Firestore Timestamps server-side but converted to
+ * ISO strings on read by the repository layer.
+ */
+export interface Campaign extends CampaignData {
+  id: string
+  uid: string          // Firebase Auth UID of the owning advertiser
+  status: CampaignStatus
+  /**
+   * Set to `true` on creation. An admin must set it to `false` to allow the
+   * campaign to go live. Firestore rules prevent clients from clearing this flag.
+   */
+  isUnderReview: boolean
+  createdAt: string    // ISO 8601 string (converted from Firestore Timestamp on read)
+  updatedAt: string
 }

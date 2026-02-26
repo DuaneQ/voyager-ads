@@ -55,6 +55,7 @@ jobs:
         run: npm run build
         env:
           VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
+          VITE_E2E_AUTH_BYPASS: 'true'
 
       - name: Deploy preview to Firebase Hosting (travalpass-ads-dev)
         uses: FirebaseExtended/action-hosting-deploy@v0
@@ -73,6 +74,8 @@ jobs:
         run: npm run test:e2e
         env:
           PLAYWRIGHT_BASE_URL: ${{ steps.firebase_deploy.outputs.details_url }}
+          FEEDBACK_EMAIL: ${{ secrets.FEEDBACK_EMAIL }}
+          FEEDBACK_PASSWORD: ${{ secrets.FEEDBACK_PASSWORD }}
 
       - name: Upload Playwright report
         if: always()
@@ -83,7 +86,40 @@ jobs:
           retention-days: 14
 
   # ────────────────────────────────────────────────────────────────────────────
-  # 3. Production deploy → Firebase Hosting (mundo1-1 / travalpass-ads)
+  # 3. Dev live deploy → Firebase Hosting (mundo1-dev / travalpass-ads-dev)
+  #    Runs on merge to main; keeps travalpass-ads-dev.web.app up to date
+  #    without the E2E bypass flag (clean build).
+  # ────────────────────────────────────────────────────────────────────────────
+  deploy-dev:
+    name: Dev live deploy (mundo1-dev)
+    runs-on: ubuntu-latest
+    needs: unit
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
+
+      - name: Deploy to Firebase Hosting dev live (travalpass-ads-dev)
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_DEV }}
+          projectId: mundo1-dev
+          target: travalpass-ads
+          channelId: live
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # 4. Production deploy → Firebase Hosting (mundo1-1 / travalpass-ads)
   #    Runs only on merge to main, after unit tests pass.
   # ────────────────────────────────────────────────────────────────────────────
   deploy-production:

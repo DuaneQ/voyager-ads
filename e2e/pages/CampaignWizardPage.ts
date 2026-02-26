@@ -19,40 +19,20 @@ export class CampaignWizardPage {
 
   async goto(baseUrl = process.env.PLAYWRIGHT_BASE_URL || process.env.BASE_URL || 'http://localhost:5173') {
     await this.page.goto(`${baseUrl}/create-campaign`);
-    await this.page.waitForLoadState('networkidle');
+    // Wait for the wizard to render (handles ProtectedRoute spinner + lazy-loaded chunk)
+    await this.page.waitForSelector('[data-testid="campaign-wizard"]', { state: 'visible', timeout: 20_000 });
   }
 
   async selectPlacement(name: string) {
-    // Try a few strategies to cover common implementations
-    if (await this.placementSelect.count()) {
-      await this.placementSelect.selectOption({ label: name });
-      return;
-    }
+    // Convert label to the data-testid slug used by StepDetails placement cards.
+    // e.g. "Video Feed" → "placement-video-feed",
+    //      "AI Slots"   → "placement-ai-slots"
+    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+    const card = this.page.locator(`[data-testid="placement-${slug}"]`)
 
-    // fallback: click the visible label text for the placement (StepDetails uses a clickable Box)
-    // scope the search to the StepDetails group to avoid matching similar text on other pages
-    const stepGroup = this.page.getByRole('group', { name: /Step 1 of .*: Details/i }).first();
-    if (await stepGroup.count()) {
-      const byText = stepGroup.getByText(new RegExp(`^${name}$`, 'i')).first();
-      if (await byText.count()) {
-        await byText.click();
-        return;
-      }
-    }
-    // fallback to global text search if scoped search fails
-    const byTextGlobal = this.page.getByText(new RegExp(`^${name}$`, 'i')).first();
-    if (await byTextGlobal.count()) {
-      await byTextGlobal.click();
-      return;
-    }
-
-    const radio = this.page.getByLabel(new RegExp(name, 'i'));
-    if (await radio.count()) {
-      await radio.first().click();
-      return;
-    }
-
-    throw new Error(`Placement selector for "${name}" not found; update selector in CampaignWizardPage`);
+    // Wait up to 10 s for the card to be visible (handles slow cold-start renders)
+    await card.waitFor({ state: 'visible', timeout: 10_000 })
+    await card.click()
   }
 
   async next() {

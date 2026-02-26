@@ -38,11 +38,12 @@ describe('CreateCampaignPage', () => {
 describe('SignInPage', () => {
   it('renders the sign-in heading', () => {
     render(<SignInPage />)
-    expect(screen.getByRole('heading', { name: /Sign in to TravalPass Ads/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Sign in/i })).toBeInTheDocument()
   })
 
   it('renders the coming-soon copy', () => {
     render(<SignInPage />)
-    expect(screen.getByText(/coming soon/i)).toBeInTheDocument()
+    // SignInPage now shows the sign-in form; assert presence of Google button
+    expect(screen.getByRole('button', { name: /Sign in with Google/i })).toBeInTheDocument()
   })
 })

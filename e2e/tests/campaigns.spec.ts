@@ -1,12 +1,21 @@
 import { test, expect } from '@playwright/test';
 import CampaignWizardPage from '../pages/CampaignWizardPage';
 import { selectGooglePlace } from '../helpers/googleAutocomplete';
+import { signIn } from '../helpers/auth';
 
 const BASE = process.env.PLAYWRIGHT_BASE_URL || process.env.BASE_URL || 'http://localhost:5173';
 
 test.describe('Campaign Wizard - placements', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(BASE);
+    // Ensure tests are authenticated — sign in via UI using provided test creds
+    try {
+      await signIn(page);
+      console.log('E2E: signIn completed in beforeEach');
+    } catch (err) {
+      // capture page state and rethrow so Playwright records failure artifacts
+      try { await page.screenshot({ path: `test-results/debug-signin-beforeEach-${Date.now()}.png`, fullPage: true }); } catch (e) {}
+      throw err;
+    }
   });
 
   test('Create Video Feed campaign flow', async ({ page }) => {
@@ -37,7 +46,9 @@ test.describe('Campaign Wizard - placements', () => {
     await wizard.agreePolicy();
     await wizard.submit();
 
-    await expect(page.locator('text=Campaign submitted!').first()).toBeVisible();
+    // Wizard redirects to /dashboard after submit; success banner confirms submission.
+    await page.waitForURL(/\/dashboard/, { timeout: 15_000 });
+    await expect(page.locator('[role="alert"]').first()).toContainText('Campaign submitted');
   });
 
   test('Create Itinerary Feed campaign flow', async ({ page }) => {
@@ -68,7 +79,10 @@ test.describe('Campaign Wizard - placements', () => {
     await wizard.next(); // to Review
     await wizard.agreePolicy();
     await wizard.submit();
-    await expect(page.locator('text=Campaign submitted!').first()).toBeVisible();
+
+    // Wizard redirects to /dashboard after submit; success banner confirms submission.
+    await page.waitForURL(/\/dashboard/, { timeout: 15_000 });
+    await expect(page.locator('[role="alert"]').first()).toContainText('Campaign submitted');
   });
 
   test('Create AI Slot campaign flow', async ({ page }) => {
@@ -100,6 +114,9 @@ test.describe('Campaign Wizard - placements', () => {
     await wizard.next(); // to Review
     await wizard.agreePolicy();
     await wizard.submit();
-    await expect(page.locator('text=Campaign submitted!').first()).toBeVisible();
+
+    // Wizard redirects to /dashboard after submit; success banner confirms submission.
+    await page.waitForURL(/\/dashboard/, { timeout: 15_000 });
+    await expect(page.locator('[role="alert"]').first()).toContainText('Campaign submitted');
   });
 });

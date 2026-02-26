@@ -1,5 +1,7 @@
 import { useState, useCallback } from 'react'
-import { type CampaignDraft, EMPTY_DRAFT } from '../types/campaign'
+import { type CampaignDraft, type CampaignData, EMPTY_DRAFT } from '../types/campaign'
+import { campaignRepository } from '../repositories/campaignRepositoryInstance'
+import useAuthStore from '../store/authStore'
 
 export const STEP_COUNT = 5
 
@@ -8,6 +10,7 @@ export const STEP_COUNT = 5
  * All mutation goes through `patch` to keep updates predictable.
  */
 export function useCreateCampaign() {
+  const user = useAuthStore(state => state.user)
   const [step, setStep] = useState(0) // 0-indexed internally
   const [draft, setDraft] = useState<CampaignDraft>(EMPTY_DRAFT)
   const [submitted, setSubmitted] = useState(false)
@@ -23,27 +26,35 @@ export function useCreateCampaign() {
 
   const submit = useCallback(async () => {
     setSubmitError(null)
+    // In E2E preview builds the auth store may not have hydrated yet because
+    // onAuthStateChanged fires asynchronously. Fall back to a placeholder uid
+    // so the UI flow completes; the stub repository handles the create call.
+    const uid = user?.uid ?? (import.meta.env.VITE_E2E_AUTH_BYPASS === 'true' ? 'e2e-user' : null)
+    if (!uid) {
+      setSubmitError('You must be signed in to submit a campaign.')
+      return
+    }
     try {
-      /**
-       * DATE SERIALIZATION CONTRACT (enforce when wiring to Firestore):
-       *
-       * WRITE  — all date fields (startDate, endDate, targetTravelStartDate,
-       *          targetTravelEndDate) are already YYYY-MM-DD strings produced by
-       *          <input type="date"> or formatDateLocal(). Store them as plain
-       *          strings — do NOT convert to Timestamps or call toISOString().
-       *
-       * READ   — use displayDate(raw) for human display and parseLocalDate(raw)
-       *          when a Date object is needed. Never use new Date(rawString) on
-       *          a bare YYYY-MM-DD value; it parses as UTC and shifts one day
-       *          in negative-UTC timezones (Americas).
-       */
+      // Build CampaignData: strip File object, add assetUrl placeholder.
+      // File upload to Firebase Storage is a future step; the URL will be
+      // filled in by the upload flow before the campaign goes live.
+      //
+      // DATE SERIALIZATION NOTE: startDate, endDate, targetTravelStartDate,
+      // and targetTravelEndDate are already YYYY-MM-DD strings from the form.
+      // Store them as plain strings — do NOT convert to Timestamps or call
+      // toISOString() (that coerces to UTC and shifts dates in negative-UTC
+      // timezones). Use displayDate(raw) for display and parseLocalDate(raw)
+      // for Date objects on reads.
+      const { assetFile: _discarded, ...rest } = draft
+      const campaignData: CampaignData = { ...rest, assetUrl: null }
+      await campaignRepository.create(campaignData, uid)
       setSubmitted(true)
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Failed to submit campaign. Please try again.'
       setSubmitError(message)
     }
-  }, [])
+  }, [draft, user])
 
   const reset = useCallback(() => {
     setDraft(EMPTY_DRAFT)

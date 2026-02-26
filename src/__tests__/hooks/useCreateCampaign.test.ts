@@ -1,9 +1,33 @@
 import { renderHook, act } from '@testing-library/react'
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useCreateCampaign } from '../../hooks/useCreateCampaign'
 import { EMPTY_DRAFT } from '../../types/campaign'
+import type { User } from 'firebase/auth'
+
+// ── Mocks ─────────────────────────────────────────────────────────────────────
+
+const mockUser = { uid: 'user-123' } as User
+
+vi.mock('../../store/authStore', () => ({
+  default: (selector: (s: { user: User | null }) => unknown) =>
+    selector({ user: mockUser }),
+}))
+
+vi.mock('../../repositories/campaignRepositoryInstance', () => ({
+  campaignRepository: {
+    create: vi.fn().mockResolvedValue({ id: 'campaign-abc' }),
+    getAllByUser: vi.fn().mockResolvedValue([]),
+    update: vi.fn().mockResolvedValue(undefined),
+  },
+}))
+
+import { campaignRepository } from '../../repositories/campaignRepositoryInstance'
 
 describe('useCreateCampaign', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    ;(campaignRepository.create as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'campaign-abc' })
+  })
   it('initialises with step 0 and EMPTY_DRAFT', () => {
     const { result } = renderHook(() => useCreateCampaign())
     expect(result.current.step).toBe(0)
@@ -57,10 +81,26 @@ describe('useCreateCampaign', () => {
     expect(result.current.step).toBe(3)
   })
 
-  it('submit sets submitted to true', async () => {
+  it('submit persists to repository and sets submitted to true', async () => {
     const { result } = renderHook(() => useCreateCampaign())
     await act(async () => { await result.current.submit() })
+    expect(campaignRepository.create).toHaveBeenCalledOnce()
+    expect(campaignRepository.create).toHaveBeenCalledWith(
+      expect.not.objectContaining({ assetFile: expect.anything() }),
+      mockUser.uid,
+    )
     expect(result.current.submitted).toBe(true)
+    expect(result.current.submitError).toBeNull()
+  })
+
+  it('submit sets submitError when repository throws', async () => {
+    ;(campaignRepository.create as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new Error('Firestore unavailable'),
+    )
+    const { result } = renderHook(() => useCreateCampaign())
+    await act(async () => { await result.current.submit() })
+    expect(result.current.submitted).toBe(false)
+    expect(result.current.submitError).toBe('Firestore unavailable')
   })
 
   it('reset returns to initial state after submit', async () => {

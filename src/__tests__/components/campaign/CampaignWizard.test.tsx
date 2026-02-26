@@ -5,6 +5,26 @@ import { AppAlertProvider } from '../../../context/AppAlertContext'
 import CampaignWizard from '../../../components/campaign/CampaignWizard'
 import * as useCreateCampaignModule from '../../../hooks/useCreateCampaign'
 import { EMPTY_DRAFT } from '../../../types/campaign'
+import type { User } from 'firebase/auth'
+
+const mockNavigate = vi.fn()
+vi.mock('react-router-dom', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('react-router-dom')>()),
+  useNavigate: () => mockNavigate,
+}))
+
+vi.mock('../../../store/authStore', () => ({
+  default: (selector: (s: { user: User | null }) => unknown) =>
+    selector({ user: { uid: 'test-user' } as User }),
+}))
+
+vi.mock('../../../repositories/campaignRepositoryInstance', () => ({
+  campaignRepository: {
+    create: vi.fn().mockResolvedValue({ id: 'new-campaign' }),
+    getAllByUser: vi.fn().mockResolvedValue([]),
+    update: vi.fn().mockResolvedValue(undefined),
+  },
+}))
 
 function renderWizard() {
   return render(
@@ -115,7 +135,7 @@ describe('CampaignWizard', () => {
     expect(screen.getByRole('button', { name: /Submit campaign/i })).toBeInTheDocument()
   })
 
-  it('shows the submitted confirmation screen after clicking Submit', async () => {
+  it('navigates to /dashboard with submitted state after clicking Submit', async () => {
     renderWizard()
     // Navigate to last step
     fireEvent.change(screen.getByLabelText(/Campaign name/i), { target: { value: 'Ad Campaign' } })
@@ -131,30 +151,10 @@ describe('CampaignWizard', () => {
     // Agree to policy to enable submit
     fireEvent.click(screen.getByRole('checkbox'))
     fireEvent.click(screen.getByRole('button', { name: /Submit campaign/i }))
-    // Submitted confirmation
-    expect(await screen.findByText(/Campaign submitted!/i)).toBeInTheDocument()
-    expect(screen.getByRole('status')).toBeInTheDocument()
-  })
-
-  it('resets back to the wizard after clicking Create another campaign', async () => {
-    renderWizard()
-    // Fast-track to submit
-    fireEvent.change(screen.getByLabelText(/Campaign name/i), { target: { value: 'Ad Campaign' } })
-    fireEvent.change(screen.getByLabelText(/Campaign start date/i), { target: { value: '2030-06-01' } })
-    fireEvent.click(screen.getByRole('button', { name: /Next/i }))
-    fireEvent.change(screen.getByLabelText(/Creative name/i), { target: { value: 'Banner' } })
-    fireEvent.click(screen.getByRole('button', { name: /Next/i }))
-    fireEvent.change(screen.getByLabelText(/Audience name/i), { target: { value: 'Travelers' } })
-    fireEvent.change(screen.getByLabelText(/Location/i), { target: { value: 'Paris' } })
-    fireEvent.click(screen.getByRole('button', { name: /Next/i }))
-    fireEvent.change(screen.getByLabelText(/Budget amount/i), { target: { value: '25' } })
-    fireEvent.click(screen.getByRole('button', { name: /Next/i }))
-    fireEvent.click(screen.getByRole('checkbox'))
-    fireEvent.click(screen.getByRole('button', { name: /Submit campaign/i }))
-    await screen.findByText(/Campaign submitted!/i)
-    fireEvent.click(screen.getByRole('button', { name: /Create another campaign/i }))
-    // Back to step 0
-    expect(screen.getByLabelText(/Campaign name/i)).toBeInTheDocument()
+    // Should redirect to dashboard with submitted flag
+    await vi.waitFor(() =>
+      expect(mockNavigate).toHaveBeenCalledWith('/dashboard', { state: { submitted: true } })
+    )
   })
 
   it('surfaces submitError through the global alert snackbar', () => {
