@@ -158,7 +158,7 @@ const MetricsChart: React.FC<Props> = ({
             exclusive
             size="small"
             onChange={(_, v) => { if (v !== null) setRange(v as DateRange) }}
-            aria-label="Date range"
+            aria-label="Select date range for chart"
           >
             <ToggleButton value={7} aria-label="Last 7 days">7D</ToggleButton>
             <ToggleButton value={14} aria-label="Last 14 days">14D</ToggleButton>
@@ -211,8 +211,10 @@ const MetricsChart: React.FC<Props> = ({
           sx={{
             '& .MuiLineElement-root': { strokeWidth: 2 },
             '& .MuiAreaElement-root': { fillOpacity: 0.12 },
+            ...(chartSeries.length <= 1 && {
+              '& .MuiChartsLegend-root': { display: 'none' },
+            }),
           }}
-          slotProps={{ legend: { hidden: chartSeries.length <= 1 } }}
         />
       )}
     </Paper>

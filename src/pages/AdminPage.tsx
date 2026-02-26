@@ -6,17 +6,18 @@ import CircularProgress from '@mui/material/CircularProgress'
 import Container from '@mui/material/Container'
 import Pagination from '@mui/material/Pagination'
 import Typography from '@mui/material/Typography'
-
-const PAGE_SIZE = 10
 import Nav from '../components/common/Nav'
 import CampaignReviewCard from '../components/admin/CampaignReviewCard'
 import { adminService } from '../services/admin/adminServiceInstance'
 import type { Campaign } from '../types/campaign'
 
+const PAGE_SIZE = 10
+
 const AdminPage: React.FC = () => {
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
   const [page, setPage] = useState(1)
 
   const load = useCallback(async () => {
@@ -35,24 +36,33 @@ const AdminPage: React.FC = () => {
   useEffect(() => { load() }, [load])
 
   const handleApprove = async (id: string) => {
-    await adminService.reviewCampaign(id, 'approve')
-    setCampaigns((prev) => {
-      const next = prev.filter((c) => c.id !== id)
-      // If we just emptied the current page, step back one
-      const maxPage = Math.max(1, Math.ceil(next.length / PAGE_SIZE))
-      setPage((p) => Math.min(p, maxPage))
-      return next
-    })
+    setActionError(null)
+    try {
+      await adminService.reviewCampaign(id, 'approve')
+      setCampaigns((prev) => {
+        const next = prev.filter((c) => c.id !== id)
+        const maxPage = Math.max(1, Math.ceil(next.length / PAGE_SIZE))
+        setPage((p) => Math.min(p, maxPage))
+        return next
+      })
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Failed to approve campaign.')
+    }
   }
 
   const handleReject = async (id: string, note: string) => {
-    await adminService.reviewCampaign(id, 'reject', note)
-    setCampaigns((prev) => {
-      const next = prev.filter((c) => c.id !== id)
-      const maxPage = Math.max(1, Math.ceil(next.length / PAGE_SIZE))
-      setPage((p) => Math.min(p, maxPage))
-      return next
-    })
+    setActionError(null)
+    try {
+      await adminService.reviewCampaign(id, 'reject', note)
+      setCampaigns((prev) => {
+        const next = prev.filter((c) => c.id !== id)
+        const maxPage = Math.max(1, Math.ceil(next.length / PAGE_SIZE))
+        setPage((p) => Math.min(p, maxPage))
+        return next
+      })
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Failed to reject campaign.')
+    }
   }
 
   const pageCount = Math.max(1, Math.ceil(campaigns.length / PAGE_SIZE))
@@ -79,6 +89,8 @@ const AdminPage: React.FC = () => {
         )}
 
         {!loading && error && <Alert severity="error">{error}</Alert>}
+
+        {actionError && <Alert severity="error" sx={{ mb: 2 }}>{actionError}</Alert>}
 
         {!loading && !error && campaigns.length === 0 && (
           <Alert severity="success">No campaigns pending review.</Alert>

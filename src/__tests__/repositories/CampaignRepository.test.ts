@@ -62,4 +62,64 @@ describe('FirestoreCampaignRepository', () => {
     await repo.update('d1', 'uid-1', { name: 'New' })
     expect(firestore.updateDoc).toHaveBeenCalled()
   })
+
+  // ── totalImpressions / totalClicks counter mapping ────────────────────────
+
+  it('getAllByUser maps totalImpressions and totalClicks when present', async () => {
+    const ts = { toDate: () => new Date('2025-01-01T00:00:00Z') }
+    const raw = {
+      uid: 'uid-1',
+      status: 'active',
+      isUnderReview: false,
+      name: 'Camp',
+      placement: 'video_feed',
+      assetUrl: null,
+      createdAt: ts,
+      updatedAt: ts,
+      totalImpressions: 145637,
+      totalClicks: 1602,
+    }
+    ;(firestore.getDocs as any).mockResolvedValue({ docs: [{ id: 'd1', data: () => raw }] })
+    const list = await repo.getAllByUser('uid-1')
+    expect(list[0].totalImpressions).toBe(145637)
+    expect(list[0].totalClicks).toBe(1602)
+  })
+
+  it('getAllByUser leaves totalImpressions and totalClicks undefined when absent', async () => {
+    const ts = { toDate: () => new Date('2025-01-01T00:00:00Z') }
+    const raw = {
+      uid: 'uid-1',
+      status: 'draft',
+      isUnderReview: true,
+      name: 'Camp',
+      placement: 'video_feed',
+      assetUrl: null,
+      createdAt: ts,
+      updatedAt: ts,
+    }
+    ;(firestore.getDocs as any).mockResolvedValue({ docs: [{ id: 'd1', data: () => raw }] })
+    const list = await repo.getAllByUser('uid-1')
+    expect(list[0].totalImpressions).toBeUndefined()
+    expect(list[0].totalClicks).toBeUndefined()
+  })
+
+  it('getAllByUser does not promote non-numeric values to counters', async () => {
+    const ts = { toDate: () => new Date('2025-01-01T00:00:00Z') }
+    const raw = {
+      uid: 'uid-1',
+      status: 'draft',
+      isUnderReview: true,
+      name: 'Camp',
+      placement: 'video_feed',
+      assetUrl: null,
+      createdAt: ts,
+      updatedAt: ts,
+      totalImpressions: 'not-a-number',
+      totalClicks: null,
+    }
+    ;(firestore.getDocs as any).mockResolvedValue({ docs: [{ id: 'd1', data: () => raw }] })
+    const list = await repo.getAllByUser('uid-1')
+    expect(list[0].totalImpressions).toBeUndefined()
+    expect(list[0].totalClicks).toBeUndefined()
+  })
 })

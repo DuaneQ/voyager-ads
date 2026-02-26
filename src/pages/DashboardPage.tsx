@@ -9,6 +9,7 @@ import CampaignSummaryCards from '../components/dashboard/CampaignSummaryCards'
 import CampaignTable from '../components/dashboard/CampaignTable'
 import MetricsChart from '../components/dashboard/MetricsChart'
 import { useCampaigns } from '../hooks/useCampaigns'
+import { useMultiCampaignMetrics } from '../hooks/useMultiCampaignMetrics'
 import { useAppAlert } from '../context/AppAlertContext'
 
 /**
@@ -17,6 +18,8 @@ import { useAppAlert } from '../context/AppAlertContext'
  */
 const DashboardPage: React.FC = () => {
   const { campaigns, loading, error, refetch } = useCampaigns()
+  const campaignIds = useMemo(() => campaigns.map(c => c.id), [campaigns])
+  const { metricsMap } = useMultiCampaignMetrics(campaignIds)
   const { showSuccess } = useAppAlert()
   const location = useLocation()
 
@@ -32,10 +35,9 @@ const DashboardPage: React.FC = () => {
   }, [])
 
   // Build one series per campaign for the aggregate chart
-  // (data is empty until tracking is instrumented — chart shows empty state)
   const chartSeries = useMemo(
-    () => campaigns.map((c) => ({ id: c.id, label: c.name, data: [] })),
-    [campaigns]
+    () => campaigns.map((c) => ({ id: c.id, label: c.name, data: metricsMap[c.id] ?? [] })),
+    [campaigns, metricsMap]
   )
 
   return (

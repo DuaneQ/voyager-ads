@@ -12,7 +12,6 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import CampaignAdPreview from '../campaign/CampaignAdPreview'
 import type { Campaign } from '../../types/campaign'
-import type { CampaignDraft } from '../../types/campaign'
 
 interface Props {
   campaign: Campaign
@@ -48,9 +47,9 @@ const CampaignReviewCard: React.FC<Props> = ({ campaign: c, onApprove, onReject 
   const [error, setError] = useState<string | null>(null)
   const [showPreview, setShowPreview] = useState(false)
 
-  // Campaign is CampaignData (which is CampaignDraft minus assetFile + assetUrl).
-  // Cast it so CampaignAdPreview can render the persisted asset URL.
-  const draftForPreview = c as unknown as CampaignDraft
+  // Use a loose cast so CampaignAdPreview can render the persisted asset URL
+  // without assuming assetFile exists.
+  const draftForPreview = c as any
 
   const handle = async (action: () => Promise<void>) => {
     setError(null)

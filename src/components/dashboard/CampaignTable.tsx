@@ -102,6 +102,7 @@ const CampaignTable: React.FC<Props> = ({ campaigns }) => {
                   variant="body2"
                   fontWeight={600}
                   sx={{ color: 'primary.main', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                  aria-label={`View details for ${campaign.name}`}
                 >
                   {campaign.name}
                 </Typography>
