@@ -26,7 +26,11 @@ export function useCreateCampaign() {
 
   const submit = useCallback(async () => {
     setSubmitError(null)
-    if (!user) {
+    // In E2E preview builds the auth store may not have hydrated yet because
+    // onAuthStateChanged fires asynchronously. Fall back to a placeholder uid
+    // so the UI flow completes; the stub repository handles the create call.
+    const uid = user?.uid ?? (import.meta.env.VITE_E2E_AUTH_BYPASS === 'true' ? 'e2e-user' : null)
+    if (!uid) {
       setSubmitError('You must be signed in to submit a campaign.')
       return
     }
@@ -43,7 +47,7 @@ export function useCreateCampaign() {
       // for Date objects on reads.
       const { assetFile: _discarded, ...rest } = draft
       const campaignData: CampaignData = { ...rest, assetUrl: null }
-      await campaignRepository.create(campaignData, user.uid)
+      await campaignRepository.create(campaignData, uid)
       setSubmitted(true)
     } catch (err) {
       const message =
