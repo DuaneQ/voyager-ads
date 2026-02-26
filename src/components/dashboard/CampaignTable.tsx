@@ -86,6 +86,7 @@ const CampaignTable: React.FC<Props> = ({ campaigns }) => {
                 <span>CTR</span>
               </Tooltip>
             </TableCell>
+            <TableCell align="right">Actions</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -166,6 +167,19 @@ const CampaignTable: React.FC<Props> = ({ campaigns }) => {
                   </>
                 )
               })()}
+              <TableCell align="right">
+                {!campaign.isUnderReview && (campaign.status === 'paused' || campaign.status === 'draft') && (
+                  <Button
+                    component={RouterLink}
+                    to={`/campaigns/${campaign.id}/edit`}
+                    size="small"
+                    variant="outlined"
+                    aria-label={`Edit ${campaign.name}`}
+                  >
+                    Edit
+                  </Button>
+                )}
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>

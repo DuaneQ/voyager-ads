@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react'
+import React, { useRef, useEffect, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Divider from '@mui/material/Divider'
@@ -6,6 +6,7 @@ import MenuItem from '@mui/material/MenuItem'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { type CampaignDraft, type CreativeType, type BusinessType } from '../../types/campaign'
+import { ASSET_CONSTRAINTS } from '../../services/campaign/CampaignAssetService'
 import CampaignAdPreview from './CampaignAdPreview'
 
 interface Props {
@@ -34,9 +35,9 @@ const PLACEMENT_TYPE: Record<string, CreativeType> = {
 }
 
 const SPECS: Record<string, string> = {
-  video_feed: 'Vertical video (portrait) · MP4 · 15–60 seconds · max 50 MB',
-  itinerary_feed: 'Square image · JPG or PNG · max 10 MB',
-  ai_slot: 'Landscape image · JPG or PNG · max 5 MB',
+  video_feed: 'Vertical video (portrait) · MP4 or MOV · 5–60 seconds · max 500 MB',
+  itinerary_feed: 'Square image · JPEG, PNG, or WebP · max 10 MB',
+  ai_slot: 'Landscape image · JPEG, PNG, or WebP · max 5 MB',
 }
 
 const PLACEMENT_LABELS: Record<string, string> = {
@@ -49,13 +50,42 @@ const StepCreative: React.FC<Props> = ({ draft, patch }) => {
   const fileRef = useRef<HTMLInputElement>(null)
   const creativeType = PLACEMENT_TYPE[draft.placement] ?? 'image'
   const specText = SPECS[draft.placement] ?? ''
+  const [fileError, setFileError] = useState<string | null>(null)
 
   // Keep draft.creativeType in sync with placement (downstream steps may read it)
   useEffect(() => {
     if (draft.creativeType !== creativeType) patch('creativeType', creativeType)
   }, [draft.placement]) // eslint-disable-line react-hooks/exhaustive-deps
 
-
+  /**
+   * Synchronous client-side pre-check (type + size).
+   * Video duration is async and is caught at submission time by CampaignAssetService.
+   */
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null
+    setFileError(null)
+    if (!file) {
+      patch('assetFile', null)
+      return
+    }
+    const constraints = ASSET_CONSTRAINTS[draft.placement]
+    if (constraints) {
+      if (!(constraints.acceptedMimeTypes as string[]).includes(file.type)) {
+        const allowed = (constraints.acceptedMimeTypes as string[]).join(', ')
+        setFileError(`Invalid file type "${file.type}". Accepted: ${allowed}.`)
+        // Reset the input so the same file can be re-selected after correction
+        if (fileRef.current) fileRef.current.value = ''
+        return
+      }
+      if (file.size > constraints.maxSizeBytes) {
+        const actualMb = (file.size / (1024 * 1024)).toFixed(1)
+        setFileError(`File is ${actualMb} MB — exceeds the ${constraints.maxSizeDisplay} limit.`)
+        if (fileRef.current) fileRef.current.value = ''
+        return
+      }
+    }
+    patch('assetFile', file)
+  }
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -85,10 +115,7 @@ const StepCreative: React.FC<Props> = ({ draft, patch }) => {
           accept={creativeType === 'video' ? 'video/*' : 'image/*'}
           style={{ display: 'none' }}
           aria-label="Upload creative asset"
-          onChange={e => {
-            const file = e.target.files?.[0] ?? null
-            patch('assetFile', file)
-          }}
+          onChange={handleFileChange}
         />
         <Button variant="outlined" size="small" onClick={() => fileRef.current?.click()}>
           {draft.assetFile ? 'Replace asset' : 'Upload asset'}
@@ -96,6 +123,11 @@ const StepCreative: React.FC<Props> = ({ draft, patch }) => {
         {draft.assetFile && (
           <Typography variant="caption" sx={{ ml: 1.5 }} color="text.secondary">
             {draft.assetFile.name}
+          </Typography>
+        )}
+        {fileError && (
+          <Typography variant="caption" color="error" display="block" sx={{ mt: 0.5 }}>
+            {fileError}
           </Typography>
         )}
       </Box>

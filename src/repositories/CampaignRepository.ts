@@ -40,7 +40,7 @@ export interface ICampaignRepository {
   update(
     id: string,
     uid: string,
-    partial: Partial<CampaignData & { status: CampaignStatus }>,
+    partial: Partial<CampaignData & { status: CampaignStatus; isUnderReview: boolean }>,
   ): Promise<void>
 }
 
@@ -130,7 +130,7 @@ export class FirestoreCampaignRepository implements ICampaignRepository {
   async update(
     id: string,
     _uid: string, // retained in signature for interface contract clarity; rules enforce server-side
-    partial: Partial<CampaignData & { status: CampaignStatus }>,
+    partial: Partial<CampaignData & { status: CampaignStatus; isUnderReview: boolean }>,
   ): Promise<void> {
     await updateDoc(doc(this.db, COLLECTION, id), {
       ...partial,

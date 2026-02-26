@@ -40,6 +40,10 @@ vi.mock('../../hooks/useCampaignMetrics', () => ({
   useCampaignMetrics: vi.fn(),
 }))
 
+vi.mock('../../context/AppAlertContext', () => ({
+  useAppAlert: () => ({ showSuccess: vi.fn(), showError: vi.fn() }),
+}))
+
 import CampaignDetailPage from '../../pages/CampaignDetailPage'
 import { useCampaigns } from '../../hooks/useCampaigns'
 import { useCampaignMetrics } from '../../hooks/useCampaignMetrics'

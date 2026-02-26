@@ -2,7 +2,9 @@ import React, { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import LinearProgress from '@mui/material/LinearProgress'
 import Tooltip from '@mui/material/Tooltip'
+import Typography from '@mui/material/Typography'
 import Step from '@mui/material/Step'
 import StepLabel from '@mui/material/StepLabel'
 import Stepper from '@mui/material/Stepper'
@@ -10,40 +12,15 @@ import { useCreateCampaign } from '../../hooks/useCreateCampaign'
 import { useAppAlert } from '../../context/AppAlertContext'
 import { type CampaignDraft } from '../../types/campaign'
 import { TEST_DRAFT } from '../../__tests__/utils/campaignTestFixtures'
+import { isStepValid, STEP_LABELS } from '../../utils/wizardUtils'
 import StepDetails from './StepDetails'
 import StepCreative from './StepCreative'
 import StepTargeting from './StepTargeting'
 import StepBudget from './StepBudget'
 import StepReview from './StepReview'
 
-const STEP_LABELS = ['Details', 'Creative', 'Targeting', 'Budget', 'Review']
-
-function isStepValid(step: number, draft: CampaignDraft): boolean {
-  const isItineraryFeed = draft.placement === 'itinerary_feed'
-  switch (step) {
-    case 0: {
-      const todayStr = new Date().toLocaleDateString('en-CA') // YYYY-MM-DD in local time
-      if (draft.name.trim().length < 3) return false
-      if (!draft.startDate || draft.startDate < todayStr) return false
-      if (draft.endDate && draft.endDate < draft.startDate) return false
-      return true
-    }
-    case 1: return draft.creativeName.trim().length > 0
-    case 2: {
-      if (!draft.audienceName.trim()) return false
-      // Itinerary feed uses targetDestination; other placements use location
-      return isItineraryFeed
-        ? draft.targetDestination.trim().length > 0
-        : draft.location.trim().length > 0
-    }
-    case 3: return parseFloat(draft.budgetAmount) > 0
-    case 4: return draft.agreePolicy
-    default: return true
-  }
-}
-
 const CampaignWizard: React.FC = () => {
-  const { step, draft, patch, next, back, submit, reset, submitted, submitError } = useCreateCampaign()
+  const { step, draft, patch, next, back, submit, reset, submitted, submitError, isUploading, uploadProgress } = useCreateCampaign()
   const { showError } = useAppAlert()
   const navigate = useNavigate()
   const isLast = step === STEP_LABELS.length - 1
@@ -114,13 +91,28 @@ const CampaignWizard: React.FC = () => {
           </Button>
 
           {isLast ? (
-            <Button
-              variant="contained"
-              onClick={submit}
-              disabled={!isValid}
-            >
-              Submit campaign
-            </Button>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0.5 }}>
+              <Button
+                variant="contained"
+                onClick={submit}
+                disabled={!isValid || isUploading}
+                aria-busy={isUploading}
+              >
+                {isUploading ? `Uploading… ${uploadProgress}%` : 'Submit campaign'}
+              </Button>
+              {isUploading && (
+                <Box sx={{ width: 180 }}>
+                  <LinearProgress
+                    variant="determinate"
+                    value={uploadProgress}
+                    aria-label="Asset upload progress"
+                  />
+                  <Typography variant="caption" color="text.secondary">
+                    Uploading creative asset
+                  </Typography>
+                </Box>
+              )}
+            </Box>
           ) : (
             <Button
               variant="contained"

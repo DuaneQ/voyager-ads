@@ -1,19 +1,20 @@
-import React, { useMemo } from 'react'
-import { useParams, Link as RouterLink } from 'react-router-dom'
+import React, { useEffect, useMemo } from 'react'
+import { useParams, Link as RouterLink, useLocation } from 'react-router-dom'
 import Box from '@mui/material/Box'
-// displayDate uses parseLocalDate internally — safe for bare YYYY-MM-DD strings
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
 import Divider from '@mui/material/Divider'
 import Typography from '@mui/material/Typography'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import Nav from '../components/common/Nav'
 import CampaignStatusChip from '../components/dashboard/CampaignStatusChip'
 import CampaignMetricsKPIs from '../components/dashboard/CampaignMetricsKPIs'
 import MetricsChart from '../components/dashboard/MetricsChart'
 import { useCampaigns } from '../hooks/useCampaigns'
 import { useCampaignMetrics } from '../hooks/useCampaignMetrics'
+import { useAppAlert } from '../context/AppAlertContext'
 import type { Placement } from '../types/campaign'
 import { displayDate } from '../utils/dateUtils'
 
@@ -41,6 +42,18 @@ function formatBudget(amount: string, type: string): string {
 const CampaignDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
   const { campaigns, loading: campaignsLoading } = useCampaigns()
+  const { showSuccess } = useAppAlert()
+  const location = useLocation()
+
+  // Show success banner when returning from a successful edit
+  useEffect(() => {
+    const state = location.state as { edited?: boolean } | null
+    if (state?.edited) {
+      showSuccess('Campaign saved! It is now under review.')
+      window.history.replaceState({}, '')
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const campaign = useMemo(
     () => campaigns.find((c) => c.id === id),
     [campaigns, id]
@@ -111,14 +124,28 @@ const CampaignDetailPage: React.FC = () => {
 
         {/* ── Campaign header ── */}
         <Box sx={{ mb: 4 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', mb: 0.5 }}>
-            <Typography variant="h2" fontWeight={700} lineHeight={1.2}>
-              {campaign.name}
-            </Typography>
-            <CampaignStatusChip
-              status={campaign.status}
-              isUnderReview={campaign.isUnderReview}
-            />
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2, mb: 0.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+              <Typography variant="h2" fontWeight={700} lineHeight={1.2}>
+                {campaign.name}
+              </Typography>
+              <CampaignStatusChip
+                status={campaign.status}
+                isUnderReview={campaign.isUnderReview}
+              />
+            </Box>
+            {!campaign.isUnderReview && (campaign.status === 'paused' || campaign.status === 'draft') && (
+              <Button
+                component={RouterLink}
+                to={`/campaigns/${campaign.id}/edit`}
+                variant="outlined"
+                size="small"
+                startIcon={<EditOutlinedIcon />}
+                aria-label={`Edit campaign: ${campaign.name}`}
+              >
+                Edit campaign
+              </Button>
+            )}
           </Box>
 
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1.5 }}>

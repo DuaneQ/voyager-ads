@@ -58,7 +58,7 @@ describe('StepCreative', () => {
 
   it('shows spec text for itinerary_feed', () => {
     render(<StepCreative draft={{ ...EMPTY_DRAFT, placement: 'itinerary_feed' }} patch={makePatch()} />)
-    expect(screen.getByText(/Square image · JPG or PNG · max 10 MB/i)).toBeInTheDocument()
+    expect(screen.getByText(/Square image · JPEG, PNG, or WebP · max 10 MB/i)).toBeInTheDocument()
   })
 
   it('shows upload button with "Upload asset" when no file', () => {
@@ -80,11 +80,22 @@ describe('StepCreative', () => {
 
   it('calls patch with the selected file on upload', () => {
     const patch = makePatch()
-    render(<StepCreative draft={EMPTY_DRAFT} patch={patch} />)
+    // Use itinerary_feed so image/jpeg passes the constraint check
+    render(<StepCreative draft={{ ...EMPTY_DRAFT, placement: 'itinerary_feed' }} patch={patch} />)
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
     const file = new File(['x'], 'ad.jpg', { type: 'image/jpeg' })
     fireEvent.change(fileInput, { target: { files: [file] } })
     expect(patch).toHaveBeenCalledWith('assetFile', file)
+  })
+
+  it('shows a file error and does not call patch when MIME type is invalid', () => {
+    const patch = makePatch()
+    render(<StepCreative draft={{ ...EMPTY_DRAFT, placement: 'itinerary_feed' }} patch={patch} />)
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+    const file = new File(['x'], 'ad.gif', { type: 'image/gif' })
+    fireEvent.change(fileInput, { target: { files: [file] } })
+    expect(screen.getByText(/Invalid file type/i)).toBeInTheDocument()
+    expect(patch).not.toHaveBeenCalledWith('assetFile', expect.anything())
   })
 
   it('shows video upload placeholder for video_feed', () => {
