@@ -46,7 +46,7 @@ export function useCreateCampaign() {
       // timezones). Use displayDate(raw) for display and parseLocalDate(raw)
       // for Date objects on reads.
       const { assetFile: _discarded, ...rest } = draft
-      const campaignData: CampaignData = { ...rest, assetUrl: null }
+      const campaignData: CampaignData = { ...rest, assetUrl: null, userEmail: user?.email ?? '' }
       await campaignRepository.create(campaignData, uid)
       setSubmitted(true)
     } catch (err) {

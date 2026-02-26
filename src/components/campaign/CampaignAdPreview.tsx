@@ -21,6 +21,11 @@ import ItineraryFeedAdPreview from './ItineraryFeedAdPreview'
 
 interface Props {
   draft: CampaignDraft
+  /**
+   * Pre-existing asset URL (e.g., a Firebase Storage URL on a persisted Campaign).
+   * Used as the preview image/video when no `assetFile` is present on the draft.
+   */
+  assetUrl?: string
 }
 
 // ─── Video Feed (portrait phone frame) ───────────────────────────────────────
@@ -306,15 +311,15 @@ const AiSlotPreview: React.FC<AiSlotPreviewProps> = ({
 
 // ─── Main export ─────────────────────────────────────────────────────────────
 
-const CampaignAdPreview: React.FC<Props> = ({ draft }) => {
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+const CampaignAdPreview: React.FC<Props> = ({ draft, assetUrl: persistedUrl }) => {
+  const [previewUrl, setPreviewUrl] = useState<string | null>(persistedUrl ?? null)
 
   useEffect(() => {
-    if (!draft.assetFile) { setPreviewUrl(null); return }
+    if (!draft.assetFile) { setPreviewUrl(persistedUrl ?? null); return }
     const url = URL.createObjectURL(draft.assetFile)
     setPreviewUrl(url)
     return () => URL.revokeObjectURL(url)
-  }, [draft.assetFile])
+  }, [draft.assetFile, persistedUrl])
 
   if (draft.placement === 'itinerary_feed') {
     return (

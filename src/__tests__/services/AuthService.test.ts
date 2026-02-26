@@ -85,6 +85,14 @@ describe('FirebaseAuthService', () => {
     expect(handler).toHaveBeenCalledTimes(2)
   })
 
+  it('resendVerificationEmail calls sendEmailVerification with the user', async () => {
+    const fakeUser = { uid: 'u3', email: 'e@f.com' } as any
+    ;(firebaseAuth.sendEmailVerification as any).mockResolvedValue(undefined)
+
+    await expect(svc.resendVerificationEmail(fakeUser)).resolves.toBeUndefined()
+    expect(firebaseAuth.sendEmailVerification).toHaveBeenCalledWith(fakeUser)
+  })
+
   it('signOut delegates to firebase signOut', async () => {
     ;(firebaseAuth.signOut as any).mockResolvedValue(undefined)
     await expect(svc.signOut()).resolves.toBeUndefined()

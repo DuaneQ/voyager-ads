@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useMemo } from 'react'
 import { useLocation } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -7,6 +7,7 @@ import Typography from '@mui/material/Typography'
 import Nav from '../components/common/Nav'
 import CampaignSummaryCards from '../components/dashboard/CampaignSummaryCards'
 import CampaignTable from '../components/dashboard/CampaignTable'
+import MetricsChart from '../components/dashboard/MetricsChart'
 import { useCampaigns } from '../hooks/useCampaigns'
 import { useAppAlert } from '../context/AppAlertContext'
 
@@ -29,6 +30,13 @@ const DashboardPage: React.FC = () => {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Build one series per campaign for the aggregate chart
+  // (data is empty until tracking is instrumented — chart shows empty state)
+  const chartSeries = useMemo(
+    () => campaigns.map((c) => ({ id: c.id, label: c.name, data: [] })),
+    [campaigns]
+  )
 
   return (
     <>
@@ -56,6 +64,7 @@ const DashboardPage: React.FC = () => {
         {!loading && !error && (
           <>
             <CampaignSummaryCards campaigns={campaigns} />
+            <MetricsChart series={chartSeries} title="Performance" />
             <CampaignTable campaigns={campaigns} />
           </>
         )}

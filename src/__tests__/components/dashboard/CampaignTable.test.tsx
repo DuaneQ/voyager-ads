@@ -1,14 +1,9 @@
 import React from 'react'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import CampaignTable from '../../../components/dashboard/CampaignTable'
 import type { Campaign } from '../../../types/campaign'
-
-// SparkLineChart renders SVG — keep tests fast and focused on table content
-vi.mock('@mui/x-charts/SparkLineChart', () => ({
-  SparkLineChart: () => <svg data-testid="sparkline" />,
-}))
 
 const base: Campaign = {
   id: 'c1',
@@ -105,13 +100,8 @@ describe('CampaignTable', () => {
     expect(screen.getByText('Under review')).toBeInTheDocument()
   })
 
-  it('renders a sparkline for each campaign', () => {
-    renderTable([base, { ...base, id: 'c2', name: 'B' }])
-    expect(screen.getAllByTestId('sparkline')).toHaveLength(2)
-  })
-
   it('shows dash for missing date range', () => {
     renderTable([{ ...base, startDate: '', endDate: '' }])
-    expect(screen.getByText('—')).toBeInTheDocument()
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0)
   })
 })

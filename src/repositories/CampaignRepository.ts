@@ -26,6 +26,13 @@ export interface ICampaignRepository {
   getAllByUser(uid: string): Promise<Campaign[]>
 
   /**
+   * Returns all campaigns currently under review, newest first.
+   * Admin-only — Firestore rules must allow access only for the admin UID
+   * or this is called exclusively from admin-authed sessions.
+   */
+  getAllPending(): Promise<Campaign[]>
+
+  /**
    * Applies a partial update to a campaign.
    * `uid` is required so callers cannot accidentally update another user's document —
    * Firestore rules enforce this server-side; the client also validates ownership.
@@ -83,11 +90,41 @@ export class FirestoreCampaignRepository implements ICampaignRepository {
         uid: raw.uid as string,
         status: raw.status as CampaignStatus,
         isUnderReview: (raw.isUnderReview ?? true) as boolean,
+        reviewNote: raw.reviewNote as string | undefined,
         // Convert Firestore Timestamps to ISO strings at the boundary
         createdAt: (raw.createdAt as Timestamp | null)?.toDate().toISOString() ?? '',
         updatedAt: (raw.updatedAt as Timestamp | null)?.toDate().toISOString() ?? '',
+        // Lifetime counters — present only after tracking is instrumented
+        totalImpressions: typeof raw.totalImpressions === 'number' ? raw.totalImpressions : undefined,
+        totalClicks: typeof raw.totalClicks === 'number' ? raw.totalClicks : undefined,
       }
     })
+  }
+
+  async getAllPending(): Promise<Campaign[]> {
+    // Query without orderBy to avoid requiring a composite Firestore index.
+    // Sorted client-side instead.
+    const q = query(
+      collection(this.db, COLLECTION),
+      where('isUnderReview', '==', true),
+    )
+    const snapshot = await getDocs(q)
+    const campaigns = snapshot.docs.map((d) => {
+      const raw = d.data()
+      return {
+        ...(raw as CampaignData),
+        id: d.id,
+        uid: raw.uid as string,
+        status: raw.status as CampaignStatus,
+        isUnderReview: (raw.isUnderReview ?? true) as boolean,
+        reviewNote: raw.reviewNote as string | undefined,
+        createdAt: (raw.createdAt as Timestamp | null)?.toDate().toISOString() ?? '',
+        updatedAt: (raw.updatedAt as Timestamp | null)?.toDate().toISOString() ?? '',
+        totalImpressions: typeof raw.totalImpressions === 'number' ? raw.totalImpressions : undefined,
+        totalClicks: typeof raw.totalClicks === 'number' ? raw.totalClicks : undefined,
+      } as Campaign
+    })
+    return campaigns.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
   }
 
   async update(

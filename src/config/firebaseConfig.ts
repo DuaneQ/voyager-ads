@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from 'firebase/app'
-import { getAuth, indexedDBLocalPersistence, initializeAuth } from 'firebase/auth'
+import { getAuth, indexedDBLocalPersistence, initializeAuth, browserPopupRedirectResolver } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 
 /**
@@ -38,7 +38,10 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0
 // and maintains auth state across tabs without exposing tokens in localStorage.
 let auth: ReturnType<typeof getAuth>
 try {
-  auth = initializeAuth(app, { persistence: indexedDBLocalPersistence })
+  auth = initializeAuth(app, {
+    persistence: indexedDBLocalPersistence,
+    popupRedirectResolver: browserPopupRedirectResolver,
+  })
 } catch {
   // initializeAuth throws if already initialized (e.g. HMR). Fall back gracefully.
   auth = getAuth(app)

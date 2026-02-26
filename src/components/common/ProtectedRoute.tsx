@@ -23,7 +23,7 @@ interface Props {
  * and will be ready by the time any Firestore writes are attempted.
  */
 const ProtectedRoute: React.FC<Props> = ({ children }) => {
-  const { isAuthenticated, isInitialized } = useAuthStore()
+  const { isAuthenticated, isInitialized, user } = useAuthStore()
   const location = useLocation()
 
   // In E2E preview builds, bypass the auth guard so protected pages render
@@ -47,6 +47,12 @@ const ProtectedRoute: React.FC<Props> = ({ children }) => {
 
   if (!isAuthenticated) {
     return <Navigate to="/signin" state={{ from: location.pathname }} replace />
+  }
+
+  // Block email/password users who haven't verified their address yet.
+  // Google sign-in always sets emailVerified=true, so this only affects email/pw signups.
+  if (user?.emailVerified === false) {
+    return <Navigate to="/signin" state={{ from: location.pathname, needsVerification: true }} replace />
   }
 
   return children

@@ -19,6 +19,8 @@ export interface IAuthService {
   signInWithGoogle(): Promise<User>
   signOut(): Promise<void>
   sendPasswordReset(email: string): Promise<void>
+  /** Re-send the verification email to an already-signed-in but unverified user. */
+  resendVerificationEmail(user: User): Promise<void>
   /** Returns an unsubscribe function. Call it on cleanup. */
   onAuthStateChanged(callback: (user: User | null) => void): () => void
 }
@@ -54,6 +56,10 @@ export class FirebaseAuthService implements IAuthService {
 
   async sendPasswordReset(email: string): Promise<void> {
     await sendPasswordResetEmail(this.auth, email)
+  }
+
+  async resendVerificationEmail(user: User): Promise<void> {
+    await sendEmailVerification(user)
   }
 
   onAuthStateChanged(callback: (user: User | null) => void): () => void {

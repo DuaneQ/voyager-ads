@@ -42,9 +42,9 @@ describe('ProtectedRoute', () => {
 
     expect(screen.getByText('signin page')).toBeInTheDocument()
   })
-
+})
   it('renders children for authenticated users', () => {
-    ;(useAuthStore as unknown as any).mockReturnValue({ isInitialized: true, isAuthenticated: true })
+    ;(useAuthStore as unknown as any).mockReturnValue({ isInitialized: true, isAuthenticated: true, user: { emailVerified: true } })
 
     render(
       <MemoryRouter>
@@ -56,4 +56,22 @@ describe('ProtectedRoute', () => {
 
     expect(screen.getByText('private content')).toBeInTheDocument()
   })
-})
+
+  it('redirects authenticated but unverified email users to /signin', () => {
+    ;(useAuthStore as unknown as any).mockReturnValue({
+      isInitialized: true,
+      isAuthenticated: true,
+      user: { emailVerified: false },
+    })
+
+    render(
+      <MemoryRouter initialEntries={['/protected']}>
+        <Routes>
+          <Route path="/signin" element={<div>signin page</div>} />
+          <Route path="/protected" element={<ProtectedRoute><div>private</div></ProtectedRoute>} />
+        </Routes>
+      </MemoryRouter>
+    )
+
+    expect(screen.getByText('signin page')).toBeInTheDocument()
+  })

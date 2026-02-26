@@ -103,6 +103,8 @@ export const EMPTY_DRAFT: CampaignDraft = {
  */
 export type CampaignData = Omit<CampaignDraft, 'assetFile'> & {
   assetUrl: string | null
+  /** Email of the advertiser at submission time — stored for admin review. */
+  userEmail: string
 }
 
 /**
@@ -119,6 +121,16 @@ export interface Campaign extends CampaignData {
    * campaign to go live. Firestore rules prevent clients from clearing this flag.
    */
   isUnderReview: boolean
+  /** Optional note left by the admin when rejecting a campaign. */
+  reviewNote?: string
   createdAt: string    // ISO 8601 string (converted from Firestore Timestamp on read)
   updatedAt: string
+  /**
+   * Lifetime impression and click counters kept in sync by the server-side
+   * tracking pipeline via FieldValue.increment. Used in the campaign table so
+   * each row can show metrics without querying the daily_metrics subcollection.
+   * Absent (undefined) on campaigns that have not yet served any impressions.
+   */
+  totalImpressions?: number
+  totalClicks?: number
 }
