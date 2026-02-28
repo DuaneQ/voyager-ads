@@ -79,11 +79,11 @@ describe('SignInPage', () => {
     render(<SignInPage />, { wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter> })
 
     fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'a@b.com' } })
-    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'pw' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } })
 
     const submit = screen.getAllByRole('button', { name: /Sign in/i }).find(b => b.getAttribute('type') === 'submit')!
     fireEvent.click(submit)
-    await waitFor(() => expect((authService.signInWithEmail as any)).toHaveBeenCalledWith('a@b.com', 'pw'))
+    await waitFor(() => expect((authService.signInWithEmail as any)).toHaveBeenCalledWith('a@b.com', 'password123'))
   })
 
   it('shows friendly error message on auth error', async () => {
@@ -91,7 +91,7 @@ describe('SignInPage', () => {
     render(<SignInPage />, { wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter> })
 
     fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'a@b.com' } })
-    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'bad' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } })
 
     const submitBtn = screen.getAllByRole('button', { name: /Sign in/i }).find(b => b.getAttribute('type') === 'submit')!
     fireEvent.click(submitBtn)
@@ -105,10 +105,11 @@ describe('SignInPage', () => {
     expect(screen.getByRole('heading', { name: /Create account/i })).toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'new@u.com' } })
-    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'newpw' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'newpassword1' } })
+    fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: 'newpassword1' } })
 
     fireEvent.click(screen.getByRole('button', { name: /Create account/i }))
-    await waitFor(() => expect((authService.signUpWithEmail as any)).toHaveBeenCalledWith('new@u.com', 'newpw'))
+    await waitFor(() => expect((authService.signUpWithEmail as any)).toHaveBeenCalledWith('new@u.com', 'newpassword1'))
     await waitFor(() => expect(screen.getByRole('heading', { name: /Verify your email/i })).toBeInTheDocument())
   })
 
@@ -117,7 +118,7 @@ describe('SignInPage', () => {
     render(<SignInPage />, { wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter> })
 
     fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'a@b.com' } })
-    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'pw' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } })
 
     const submit = screen.getAllByRole('button', { name: /Sign in/i }).find(b => b.getAttribute('type') === 'submit')!
     fireEvent.click(submit)
@@ -180,7 +181,8 @@ describe('SignInPage', () => {
     // Get to verify screen via sign-up flow (signUpWithEmail returns emailVerified: false by default)
     fireEvent.click(screen.getByText(/Sign up/i))
     fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'u@x.com' } })
-    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'pass123' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } })
+    fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: 'password123' } })
     fireEvent.click(screen.getByRole('button', { name: /Create account/i }))
     await waitFor(() => screen.getByRole('heading', { name: /Verify your email/i }))
 
@@ -195,7 +197,8 @@ describe('SignInPage', () => {
 
     fireEvent.click(screen.getByText(/Sign up/i))
     fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'u@x.com' } })
-    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'pass123' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } })
+    fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: 'password123' } })
     fireEvent.click(screen.getByRole('button', { name: /Create account/i }))
     await waitFor(() => screen.getByRole('heading', { name: /Verify your email/i }))
 
@@ -208,7 +211,8 @@ describe('SignInPage', () => {
 
     fireEvent.click(screen.getByText(/Sign up/i))
     fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'u@x.com' } })
-    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'pass123' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } })
+    fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: 'password123' } })
     fireEvent.click(screen.getByRole('button', { name: /Create account/i }))
     await waitFor(() => screen.getByRole('heading', { name: /Verify your email/i }))
 
@@ -222,7 +226,8 @@ describe('SignInPage', () => {
 
     fireEvent.click(screen.getByText(/Sign up/i))
     fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'taken@x.com' } })
-    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'pass123' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } })
+    fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: 'password123' } })
     fireEvent.click(screen.getByRole('button', { name: /Create account/i }))
     await waitFor(() => expect(screen.getByText(/An account with this email already exists/i)).toBeInTheDocument())
   })
@@ -232,10 +237,56 @@ describe('SignInPage', () => {
     render(<SignInPage />, { wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter> })
 
     fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'a@b.com' } })
-    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'pw' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } })
     const submit = screen.getAllByRole('button', { name: /Sign in/i }).find(b => b.getAttribute('type') === 'submit')!
     fireEvent.click(submit)
     await waitFor(() => expect(screen.getByText(/Network error/i)).toBeInTheDocument())
+  })
+
+  it('shows error when sign-in password is shorter than 10 characters', async () => {
+    render(<SignInPage />, { wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter> })
+
+    fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'a@b.com' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'short' } })
+    const submit = screen.getAllByRole('button', { name: /Sign in/i }).find(b => b.getAttribute('type') === 'submit')!
+    fireEvent.click(submit)
+    expect(screen.getByText(/Password must be at least 10 characters/i)).toBeInTheDocument()
+    expect(authService.signInWithEmail as any).not.toHaveBeenCalled()
+  })
+
+  it('shows error when sign-up passwords do not match', async () => {
+    render(<SignInPage />, { wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter> })
+
+    fireEvent.click(screen.getByText(/Sign up/i))
+    fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'a@b.com' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } })
+    fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: 'different456' } })
+    fireEvent.click(screen.getByRole('button', { name: /Create account/i }))
+    expect(screen.getByText(/Passwords do not match/i)).toBeInTheDocument()
+    expect(authService.signUpWithEmail as any).not.toHaveBeenCalled()
+  })
+
+  it('shows sign-up confirm password field that can toggle visibility', () => {
+    render(<SignInPage />, { wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter> })
+    fireEvent.click(screen.getByText(/Sign up/i))
+
+    const confirmInput = screen.getByLabelText('Confirm password') as HTMLInputElement
+    expect(confirmInput.type).toBe('password')
+    fireEvent.click(screen.getByRole('button', { name: /Show confirm password/i }))
+    expect(confirmInput.type).toBe('text')
+    fireEvent.click(screen.getByRole('button', { name: /Hide confirm password/i }))
+    expect(confirmInput.type).toBe('password')
+  })
+
+  it('password field can toggle visibility on sign-in', () => {
+    render(<SignInPage />, { wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter> })
+
+    const passwordInput = screen.getByLabelText('Password') as HTMLInputElement
+    expect(passwordInput.type).toBe('password')
+    fireEvent.click(screen.getByRole('button', { name: /Show password/i }))
+    expect(passwordInput.type).toBe('text')
+    fireEvent.click(screen.getByRole('button', { name: /Hide password/i }))
+    expect(passwordInput.type).toBe('password')
   })
 
   it('does NOT redirect when authenticated but email unverified', async () => {

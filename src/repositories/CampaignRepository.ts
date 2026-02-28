@@ -1,5 +1,6 @@
 import {
   type Firestore,
+  type QueryDocumentSnapshot,
   type Timestamp,
   addDoc,
   collection,
@@ -82,23 +83,7 @@ export class FirestoreCampaignRepository implements ICampaignRepository {
       orderBy('createdAt', 'desc'),
     )
     const snapshot = await getDocs(q)
-    return snapshot.docs.map((d) => {
-      const raw = d.data()
-      return {
-        ...(raw as CampaignData),
-        id: d.id,
-        uid: raw.uid as string,
-        status: raw.status as CampaignStatus,
-        isUnderReview: (raw.isUnderReview ?? true) as boolean,
-        reviewNote: raw.reviewNote as string | undefined,
-        // Convert Firestore Timestamps to ISO strings at the boundary
-        createdAt: (raw.createdAt as Timestamp | null)?.toDate().toISOString() ?? '',
-        updatedAt: (raw.updatedAt as Timestamp | null)?.toDate().toISOString() ?? '',
-        // Lifetime counters — present only after tracking is instrumented
-        totalImpressions: typeof raw.totalImpressions === 'number' ? raw.totalImpressions : undefined,
-        totalClicks: typeof raw.totalClicks === 'number' ? raw.totalClicks : undefined,
-      }
-    })
+    return snapshot.docs.map((d) => this.mapDocToCampaign(d))
   }
 
   async getAllPending(): Promise<Campaign[]> {
@@ -109,22 +94,25 @@ export class FirestoreCampaignRepository implements ICampaignRepository {
       where('isUnderReview', '==', true),
     )
     const snapshot = await getDocs(q)
-    const campaigns = snapshot.docs.map((d) => {
-      const raw = d.data()
-      return {
-        ...(raw as CampaignData),
-        id: d.id,
-        uid: raw.uid as string,
-        status: raw.status as CampaignStatus,
-        isUnderReview: (raw.isUnderReview ?? true) as boolean,
-        reviewNote: raw.reviewNote as string | undefined,
-        createdAt: (raw.createdAt as Timestamp | null)?.toDate().toISOString() ?? '',
-        updatedAt: (raw.updatedAt as Timestamp | null)?.toDate().toISOString() ?? '',
-        totalImpressions: typeof raw.totalImpressions === 'number' ? raw.totalImpressions : undefined,
-        totalClicks: typeof raw.totalClicks === 'number' ? raw.totalClicks : undefined,
-      } as Campaign
-    })
-    return campaigns.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    return snapshot.docs
+      .map((d) => this.mapDocToCampaign(d))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+  }
+
+  private mapDocToCampaign(d: QueryDocumentSnapshot): Campaign {
+    const raw = d.data()
+    return {
+      ...(raw as CampaignData),
+      id: d.id,
+      uid: raw.uid as string,
+      status: raw.status as CampaignStatus,
+      isUnderReview: (raw.isUnderReview ?? true) as boolean,
+      reviewNote: raw.reviewNote as string | undefined,
+      createdAt: (raw.createdAt as Timestamp | null)?.toDate().toISOString() ?? '',
+      updatedAt: (raw.updatedAt as Timestamp | null)?.toDate().toISOString() ?? '',
+      totalImpressions: typeof raw.totalImpressions === 'number' ? raw.totalImpressions : undefined,
+      totalClicks: typeof raw.totalClicks === 'number' ? raw.totalClicks : undefined,
+    }
   }
 
   async update(

@@ -6,11 +6,15 @@ import {
   Button,
   CircularProgress,
   Divider,
+  IconButton,
+  InputAdornment,
   Link,
   Stack,
   TextField,
   Typography,
 } from '@mui/material'
+import Visibility from '@mui/icons-material/Visibility'
+import VisibilityOff from '@mui/icons-material/VisibilityOff'
 import type { User } from 'firebase/auth'
 import Nav from '../components/common/Nav'
 import { authService } from '../services/auth/authServiceInstance'
@@ -47,6 +51,9 @@ const SignInPage: React.FC = () => {
   const [mode, setMode] = useState<Mode>(needsVerification ? 'verify' : 'signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
@@ -55,9 +62,31 @@ const SignInPage: React.FC = () => {
 
   const clearMessages = () => { setError(null); setInfo(null) }
 
+  const switchMode = (next: Mode) => {
+    clearMessages()
+    setPassword('')
+    setConfirmPassword('')
+    setShowPassword(false)
+    setShowConfirmPassword(false)
+    setMode(next)
+  }
+
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     clearMessages()
+
+    // Client-side password rules (skip for password reset flow)
+    if (mode !== 'reset') {
+      if (password.length < 10) {
+        setError('Password must be at least 10 characters.')
+        return
+      }
+      if (mode === 'signup' && password !== confirmPassword) {
+        setError('Passwords do not match.')
+        return
+      }
+    }
+
     setLoading(true)
     try {
       if (mode === 'reset') {
@@ -206,13 +235,54 @@ const SignInPage: React.FC = () => {
                 {mode !== 'reset' && (
                   <TextField
                     label="Password"
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     fullWidth
                     autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-                    inputProps={{ 'aria-label': 'Password' }}
+                    inputProps={{ 'aria-label': 'Password', minLength: 10 }}
+                    helperText={mode !== 'signin' ? 'At least 10 characters' : undefined}
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                            onClick={() => setShowPassword((v) => !v)}
+                            edge="end"
+                            size="small"
+                          >
+                            {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                )}
+                {mode === 'signup' && (
+                  <TextField
+                    label="Confirm password"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    fullWidth
+                    autoComplete="new-password"
+                    inputProps={{ 'aria-label': 'Confirm password' }}
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                            onClick={() => setShowConfirmPassword((v) => !v)}
+                            edge="end"
+                            size="small"
+                          >
+                            {showConfirmPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    }}
                   />
                 )}
                 <Button
@@ -241,12 +311,12 @@ const SignInPage: React.FC = () => {
                         </Link>
                       </Alert>
                     )}
-                    <Link component="button" variant="body2" onClick={() => { clearMessages(); setMode('reset') }}>
+                    <Link component="button" variant="body2" onClick={() => switchMode('reset')}>
                       Forgot password?
                     </Link>
                     <Typography variant="body2">
                       No account?{' '}
-                      <Link component="button" onClick={() => { clearMessages(); setMode('signup') }}>
+                      <Link component="button" onClick={() => switchMode('signup')}>
                         Sign up
                       </Link>
                     </Typography>
@@ -255,13 +325,13 @@ const SignInPage: React.FC = () => {
                 {mode === 'signup' && (
                   <Typography variant="body2">
                     Already have an account?{' '}
-                    <Link component="button" onClick={() => { clearMessages(); setMode('signin') }}>
+                    <Link component="button" onClick={() => switchMode('signin')}>
                       Sign in
                     </Link>
                   </Typography>
                 )}
                 {mode === 'reset' && (
-                  <Link component="button" variant="body2" onClick={() => { clearMessages(); setMode('signin') }}>
+                  <Link component="button" variant="body2" onClick={() => switchMode('signin')}>
                     Back to sign in
                   </Link>
                 )}
@@ -287,7 +357,7 @@ function friendlyError(err: unknown): string {
     'auth/user-not-found': 'No account found with this email.',
     'auth/wrong-password': 'Incorrect password.',
     'auth/email-already-in-use': 'An account with this email already exists.',
-    'auth/weak-password': 'Password must be at least 6 characters.',
+    'auth/weak-password': 'Password must be at least 10 characters.',
     'auth/too-many-requests': 'Too many attempts. Please wait a moment and try again.',
     'auth/popup-closed-by-user': 'Sign-in popup was closed. Please try again.',
     'auth/cancelled-popup-request': 'Sign-in popup was cancelled. Please try again.',
