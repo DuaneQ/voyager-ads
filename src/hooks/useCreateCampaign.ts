@@ -1,8 +1,10 @@
 import { useState, useCallback } from 'react'
+import { httpsCallable } from 'firebase/functions'
 import { type CampaignDraft, type CampaignData, EMPTY_DRAFT } from '../types/campaign'
 import { campaignRepository } from '../repositories/campaignRepositoryInstance'
 import useAuthStore from '../store/authStore'
 import { campaignAssetService } from '../services/campaign/CampaignAssetService'
+import { functions } from '../config/firebaseConfig'
 
 export const STEP_COUNT = 5
 
@@ -45,6 +47,7 @@ export function useCreateCampaign() {
     }
     try {
       let assetUrl: string | null = null
+      let storagePath: string | null = null
 
       if (draft.assetFile) {
         // Validate first so the user gets an error before any bytes are transferred.
@@ -56,6 +59,7 @@ export function useCreateCampaign() {
           setUploadProgress(pct)
         })
         assetUrl = result.downloadUrl
+        storagePath = result.storagePath
         setIsUploading(false)
       }
 
@@ -68,8 +72,23 @@ export function useCreateCampaign() {
       // timezones). Use displayDate(raw) for display and parseLocalDate(raw)
       // for Date objects on reads.
       const { assetFile: _discarded, ...rest } = draft
-      const campaignData: CampaignData = { ...rest, assetUrl, userEmail: user?.email ?? '' }
-      await campaignRepository.create(campaignData, uid)
+      const campaignData: CampaignData = {
+        ...rest,
+        assetUrl,
+        assetStoragePath: storagePath ?? undefined,
+        userEmail: user?.email ?? '',
+      }
+      const createdCampaign = await campaignRepository.create(campaignData, uid)
+
+      // Trigger Mux transcoding for video_feed campaigns — non-blocking.
+      // The processAdVideoWithMux Cloud Function generates a signed URL, submits
+      // it to Mux, and writes muxStatus/muxPlaybackUrl back to Firestore when done.
+      if (draft.placement === 'video_feed' && storagePath) {
+        const processAd = httpsCallable(functions, 'processAdVideoWithMux')
+        processAd({ campaignId: createdCampaign.id, storagePath })
+          .catch(err => console.error('[processAdVideoWithMux] Failed to trigger Mux processing:', err))
+      }
+
       setSubmitted(true)
     } catch (err) {
       setIsUploading(false)

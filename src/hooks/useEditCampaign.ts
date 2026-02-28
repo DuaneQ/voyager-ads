@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react'
+import { httpsCallable } from 'firebase/functions'
 import type { CampaignDraft, Campaign } from '../types/campaign'
 import { EMPTY_DRAFT } from '../types/campaign'
 import { campaignRepository } from '../repositories/campaignRepositoryInstance'
@@ -6,6 +7,7 @@ import useAuthStore from '../store/authStore'
 import { campaignAssetService } from '../services/campaign/CampaignAssetService'
 import { useCampaigns } from './useCampaigns'
 import { STEP_COUNT } from '../utils/wizardUtils'
+import { functions } from '../config/firebaseConfig'
 
 /**
  * Manages editing an existing campaign.
@@ -74,6 +76,7 @@ export function useEditCampaign(campaignId: string | undefined) {
       // • New file selected → validate + upload → use fresh downloadUrl.
       // • No new file → retain the existing assetUrl from the loaded campaign.
       let assetUrl: string | null = campaign?.assetUrl ?? null
+      let newStoragePath: string | null = null
 
       if (draft.assetFile) {
         await campaignAssetService.validate(draft.assetFile, draft.placement)
@@ -83,6 +86,7 @@ export function useEditCampaign(campaignId: string | undefined) {
           setUploadProgress(pct)
         })
         assetUrl = result.downloadUrl
+        newStoragePath = result.storagePath
         setIsUploading(false)
       }
 
@@ -92,8 +96,16 @@ export function useEditCampaign(campaignId: string | undefined) {
       await campaignRepository.update(campaignId, uid, {
         ...rest,
         assetUrl,
+        ...(newStoragePath ? { assetStoragePath: newStoragePath } : {}),
         isUnderReview: true,
       })
+
+      // Re-trigger Mux transcoding if a new video file was uploaded
+      if (draft.placement === 'video_feed' && newStoragePath) {
+        const processAd = httpsCallable(functions, 'processAdVideoWithMux')
+        processAd({ campaignId, storagePath: newStoragePath })
+          .catch(err => console.error('[processAdVideoWithMux] Edit: Failed to trigger Mux processing:', err))
+      }
 
       setSubmitted(true)
     } catch (err) {

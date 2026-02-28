@@ -96,6 +96,7 @@ const CampaignReviewCard: React.FC<Props> = ({ campaign: c, onApprove, onReject 
               <CampaignAdPreview
                 draft={draftForPreview}
                 assetUrl={c.assetUrl ?? undefined}
+                muxPlaybackUrl={c.muxPlaybackUrl ?? undefined}
               />
             </Box>
           </Collapse>
@@ -133,8 +134,15 @@ const CampaignReviewCard: React.FC<Props> = ({ campaign: c, onApprove, onReject 
             <Box sx={{ mt: 1 }}>
               {c.creativeType === 'image'
                 ? <img src={c.assetUrl} alt="Ad creative" style={{ maxWidth: 320, borderRadius: 8, border: '1px solid #e0e0e0' }} />
-                : <a href={c.assetUrl} target="_blank" rel="noreferrer noopener">View video asset</a>
+                : c.muxPlaybackUrl
+                  ? <video src={c.muxPlaybackUrl} controls style={{ maxWidth: 320, borderRadius: 8 }} aria-label="Ad video (HLS)" />
+                  : <a href={c.assetUrl} target="_blank" rel="noreferrer noopener">View video asset</a>
               }
+              {c.placement === 'video_feed' && c.muxStatus && c.muxStatus !== 'ready' && (
+                <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: c.muxStatus === 'errored' ? 'error.main' : 'text.secondary' }}>
+                  Mux status: {c.muxStatus}{c.muxError ? ` — ${c.muxError}` : ''}
+                </Typography>
+              )}
             </Box>
           )}
           {/* AI slot fields */}

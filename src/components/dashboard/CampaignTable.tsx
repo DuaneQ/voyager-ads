@@ -52,7 +52,7 @@ const CampaignTable: React.FC<Props> = ({ campaigns }) => {
         </Typography>
         <Button
           component={RouterLink}
-          to="/campaigns/new"
+          to="/create-campaign"
           variant="contained"
         >
           Create campaign

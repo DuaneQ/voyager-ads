@@ -105,6 +105,23 @@ export type CampaignData = Omit<CampaignDraft, 'assetFile'> & {
   assetUrl: string | null
   /** Email of the advertiser at submission time — stored for admin review. */
   userEmail: string
+  /**
+   * Firebase Storage path of the uploaded asset (e.g. `ads/{uid}/{ts}_file.mp4`).
+   * Used by the processAdVideoWithMux Cloud Function to generate a signed URL
+   * for Mux ingestion. Only set for video_feed campaigns.
+   */
+  assetStoragePath?: string
+  // ─── Mux transcoding fields (video_feed only) ──────────────────────────
+  // Written by the processAdVideoWithMux Cloud Function and the muxWebhook.
+  // Absent on non-video campaigns and on newly created video campaigns before
+  // the Cloud Function has run.
+  muxAssetId?: string
+  muxPlaybackId?: string
+  /** HLS m3u8 URL — use this for playback when present; fall back to assetUrl. */
+  muxPlaybackUrl?: string
+  muxThumbnailUrl?: string
+  muxStatus?: 'preparing' | 'ready' | 'errored'
+  muxError?: string
 }
 
 /**

@@ -2,6 +2,7 @@ import { initializeApp, getApps } from 'firebase/app'
 import { getAuth, indexedDBLocalPersistence, initializeAuth, browserPopupRedirectResolver } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 import { getStorage } from 'firebase/storage'
+import { getFunctions } from 'firebase/functions'
 
 /**
  * Firebase config values are intentionally public — they identify the project but do not
@@ -50,5 +51,6 @@ try {
 
 const db = getFirestore(app)
 const storage = getStorage(app)
+const functions = getFunctions(app, 'us-central1')
 
-export { app, auth, db, storage }
+export { app, auth, db, storage, functions }

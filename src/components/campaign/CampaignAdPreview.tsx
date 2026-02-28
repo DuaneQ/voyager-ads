@@ -9,7 +9,8 @@
  * Purely presentational — no network calls or side effects beyond the object URL
  * lifecycle for the uploaded asset file.
  */
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
+import Hls from 'hls.js'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import FavoriteIcon from '@mui/icons-material/Favorite'
@@ -24,8 +25,14 @@ interface Props {
   /**
    * Pre-existing asset URL (e.g., a Firebase Storage URL on a persisted Campaign).
    * Used as the preview image/video when no `assetFile` is present on the draft.
+   * For video_feed campaigns, prefer muxPlaybackUrl (HLS) over the raw Storage URL.
    */
   assetUrl?: string
+  /**
+   * Mux HLS playback URL — when present on a video_feed campaign, used instead
+   * of `assetUrl` to ensure cross-platform/cross-browser video playback.
+   */
+  muxPlaybackUrl?: string
 }
 
 // ─── Video Feed (portrait phone frame) ───────────────────────────────────────
@@ -34,7 +41,37 @@ const VideoFeedPreview: React.FC<{ imageUrl: string | null; primaryText: string;
   imageUrl,
   primaryText,
   cta,
-}) => (
+}) => {
+  const videoRef = useRef<HTMLVideoElement>(null)
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video || !imageUrl) return
+
+    const isHls = imageUrl.endsWith('.m3u8') || imageUrl.includes('.m3u8?')
+
+    if (isHls) {
+      if (Hls.isSupported()) {
+        const hls = new Hls()
+        hls.loadSource(imageUrl)
+        hls.attachMedia(video)
+        video.muted = true
+        video.loop = true
+        video.play().catch(() => {})
+        return () => hls.destroy()
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        // Safari — native HLS support
+        video.src = imageUrl
+        video.muted = true
+        video.loop = true
+        video.play().catch(() => {})
+      }
+    } else {
+      video.src = imageUrl
+    }
+  }, [imageUrl])
+
+  return (
   <Box
     sx={{ maxWidth: 200, mx: 'auto', width: '100%' }}
     role="img"
@@ -63,10 +100,9 @@ const VideoFeedPreview: React.FC<{ imageUrl: string | null; primaryText: string;
       {imageUrl ? (
         <Box
           component="video"
-          src={imageUrl}
+          ref={videoRef}
           muted
           loop
-          autoPlay
           playsInline
           aria-label="Ad creative"
           sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
@@ -152,7 +188,8 @@ const VideoFeedPreview: React.FC<{ imageUrl: string | null; primaryText: string;
       </Box>
     </Box>
   </Box>
-)
+  )
+}
 
 // ─── AI Slot (image on top, text card below) ─────────────────────────────────
 
@@ -311,15 +348,21 @@ const AiSlotPreview: React.FC<AiSlotPreviewProps> = ({
 
 // ─── Main export ─────────────────────────────────────────────────────────────
 
-const CampaignAdPreview: React.FC<Props> = ({ draft, assetUrl: persistedUrl }) => {
-  const [previewUrl, setPreviewUrl] = useState<string | null>(persistedUrl ?? null)
+const CampaignAdPreview: React.FC<Props> = ({ draft, assetUrl: persistedUrl, muxPlaybackUrl }) => {
+  const [previewUrl, setPreviewUrl] = useState<string | null>(
+    // Prefer Mux HLS URL for video_feed previews when available
+    muxPlaybackUrl ?? persistedUrl ?? null
+  )
 
   useEffect(() => {
-    if (!draft.assetFile) { setPreviewUrl(persistedUrl ?? null); return }
+    if (!draft.assetFile) {
+      setPreviewUrl(muxPlaybackUrl ?? persistedUrl ?? null)
+      return
+    }
     const url = URL.createObjectURL(draft.assetFile)
     setPreviewUrl(url)
     return () => URL.revokeObjectURL(url)
-  }, [draft.assetFile, persistedUrl])
+  }, [draft.assetFile, persistedUrl, muxPlaybackUrl])
 
   if (draft.placement === 'itinerary_feed') {
     return (
