@@ -152,11 +152,13 @@ describe('CampaignReviewCard', () => {
     expect(screen.getByRole('img', { name: /Ad creative/i })).toHaveAttribute('src', 'https://cdn.example.com/banner.jpg')
   })
 
-  it('renders video link when assetUrl is set and creativeType is video', () => {
+  it('renders no raw video link when assetUrl is set and creativeType is video (video is watched via the ad preview)', () => {
     const h = makeHandlers()
     const campaign = { ...BASE_CAMPAIGN, assetUrl: 'https://cdn.example.com/video.mp4', creativeType: 'video' as const }
     render(<CampaignReviewCard campaign={campaign} {...h} />)
-    expect(screen.getByRole('link', { name: /View video asset/i })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /View video asset/i })).not.toBeInTheDocument()
+    // The "Show ad preview" toggle is present so the reviewer can watch in-frame
+    expect(screen.getByRole('button', { name: /show ad preview/i })).toBeInTheDocument()
   })
 
   it('shows ai_slot specific fields for ai_slot placement', () => {

@@ -31,6 +31,13 @@ vi.mock('../../components/dashboard/MetricsChart', () => ({
   ),
 }))
 
+vi.mock('../../components/campaign/CampaignAdPreview', () => ({
+  __esModule: true,
+  default: ({ assetUrl, muxPlaybackUrl }: { assetUrl?: string; muxPlaybackUrl?: string }) => (
+    <div data-testid="campaign-ad-preview" data-asset={assetUrl} data-mux={muxPlaybackUrl} />
+  ),
+}))
+
 // ── Hook mocks ─────────────────────────────────────────────────────────────────
 vi.mock('../../hooks/useCampaigns', () => ({
   useCampaigns: vi.fn(),
@@ -247,5 +254,42 @@ describe('CampaignDetailPage', () => {
     })
     renderPage()
     expect(screen.getByRole('link', { name: /All campaigns/i })).toHaveAttribute('href', '/dashboard')
+  })
+
+  // ── Your Ad section ───────────────────────────────────────────────────────────
+  it('renders the "Your Ad" section when assetUrl is present', () => {
+    const campaign = { ...baseCampaign, assetUrl: 'https://cdn.example.com/video.mp4' }
+    vi.mocked(useCampaigns).mockReturnValue({ campaigns: [campaign], loading: false, error: null, refetch: vi.fn() })
+    renderPage()
+    expect(screen.getByText('Your Ad')).toBeInTheDocument()
+    expect(screen.getByTestId('campaign-ad-preview')).toBeInTheDocument()
+  })
+
+  it('renders the "Your Ad" section when muxPlaybackUrl is present', () => {
+    const campaign = { ...baseCampaign, muxPlaybackUrl: 'https://stream.mux.com/abc.m3u8' }
+    vi.mocked(useCampaigns).mockReturnValue({ campaigns: [campaign], loading: false, error: null, refetch: vi.fn() })
+    renderPage()
+    expect(screen.getByTestId('campaign-ad-preview')).toBeInTheDocument()
+  })
+
+  it('does not render the "Your Ad" section when no asset is available', () => {
+    vi.mocked(useCampaigns).mockReturnValue({ campaigns: [baseCampaign], loading: false, error: null, refetch: vi.fn() })
+    renderPage()
+    expect(screen.queryByText('Your Ad')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('campaign-ad-preview')).not.toBeInTheDocument()
+  })
+
+  it('shows mux processing status when video is still preparing', () => {
+    const campaign = { ...baseCampaign, assetUrl: 'https://cdn.example.com/v.mp4', muxStatus: 'preparing' as const }
+    vi.mocked(useCampaigns).mockReturnValue({ campaigns: [campaign], loading: false, error: null, refetch: vi.fn() })
+    renderPage()
+    expect(screen.getByText(/Video is still being optimised/i)).toBeInTheDocument()
+  })
+
+  it('shows mux error message when video processing failed', () => {
+    const campaign = { ...baseCampaign, assetUrl: 'https://cdn.example.com/v.mp4', muxStatus: 'errored' as const, muxError: 'Unsupported format' }
+    vi.mocked(useCampaigns).mockReturnValue({ campaigns: [campaign], loading: false, error: null, refetch: vi.fn() })
+    renderPage()
+    expect(screen.getByText(/Video processing failed.*Unsupported format/i)).toBeInTheDocument()
   })
 })

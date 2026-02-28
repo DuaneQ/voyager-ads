@@ -90,7 +90,7 @@ describe('CampaignAdPreview', () => {
       expect(screen.getByText('Book Now')).toBeInTheDocument()
     })
 
-    it('sets video.src directly for a raw (non-HLS) URL', () => {
+    it('sets video.src directly and plays for a raw (non-HLS) URL', () => {
       const rawUrl = 'https://storage.googleapis.com/bucket/video.mp4'
       render(
         <CampaignAdPreview
@@ -102,6 +102,7 @@ describe('CampaignAdPreview', () => {
       expect(video).not.toBeNull()
       expect(video.src).toBe(rawUrl)
       expect(hlsMocks.ctor).not.toHaveBeenCalled()
+      expect(HTMLMediaElement.prototype.play).toHaveBeenCalled()
     })
 
     it('uses Hls.js for an HLS URL when Hls.isSupported() is true', () => {

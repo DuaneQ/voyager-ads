@@ -97,6 +97,7 @@ const CampaignReviewCard: React.FC<Props> = ({ campaign: c, onApprove, onReject 
                 draft={draftForPreview}
                 assetUrl={c.assetUrl ?? undefined}
                 muxPlaybackUrl={c.muxPlaybackUrl ?? undefined}
+                maxWidth={360}
               />
             </Box>
           </Collapse>
@@ -130,20 +131,15 @@ const CampaignReviewCard: React.FC<Props> = ({ campaign: c, onApprove, onReject 
               ? <a href={c.landingUrl} target="_blank" rel="noreferrer noopener">{c.landingUrl}</a>
               : null
           } />
-          {c.assetUrl && (
+          {c.assetUrl && c.creativeType === 'image' && (
             <Box sx={{ mt: 1 }}>
-              {c.creativeType === 'image'
-                ? <img src={c.assetUrl} alt="Ad creative" style={{ maxWidth: 320, borderRadius: 8, border: '1px solid #e0e0e0' }} />
-                : c.muxPlaybackUrl
-                  ? <video src={c.muxPlaybackUrl} controls style={{ maxWidth: 320, borderRadius: 8 }} aria-label="Ad video (HLS)" />
-                  : <a href={c.assetUrl} target="_blank" rel="noreferrer noopener">View video asset</a>
-              }
-              {c.placement === 'video_feed' && c.muxStatus && c.muxStatus !== 'ready' && (
-                <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: c.muxStatus === 'errored' ? 'error.main' : 'text.secondary' }}>
-                  Mux status: {c.muxStatus}{c.muxError ? ` — ${c.muxError}` : ''}
-                </Typography>
-              )}
+              <img src={c.assetUrl} alt="Ad creative" style={{ maxWidth: 320, borderRadius: 8, border: '1px solid #e0e0e0' }} />
             </Box>
+          )}
+          {c.placement === 'video_feed' && c.muxStatus && c.muxStatus !== 'ready' && (
+            <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: c.muxStatus === 'errored' ? 'error.main' : 'text.secondary' }}>
+              Mux status: {c.muxStatus}{c.muxError ? ` — ${c.muxError}` : ''}
+            </Typography>
           )}
           {/* AI slot fields */}
           {c.placement === 'ai_slot' && (

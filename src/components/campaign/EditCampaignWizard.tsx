@@ -119,7 +119,14 @@ const EditCampaignWizard: React.FC<Props> = ({ campaignId }) => {
           {step === 1 && <StepCreative draft={draft} patch={patch} />}
           {step === 2 && <StepTargeting draft={draft} patch={patch} />}
           {step === 3 && <StepBudget draft={draft} patch={patch} />}
-          {step === 4 && <StepReview draft={draft} patch={patch} />}
+          {step === 4 && (
+            <StepReview
+              draft={draft}
+              patch={patch}
+              assetUrl={campaign.assetUrl ?? undefined}
+              muxPlaybackUrl={campaign.muxPlaybackUrl ?? undefined}
+            />
+          )}
         </Box>
 
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>

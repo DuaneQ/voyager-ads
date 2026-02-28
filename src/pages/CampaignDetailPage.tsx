@@ -12,6 +12,7 @@ import Nav from '../components/common/Nav'
 import CampaignStatusChip from '../components/dashboard/CampaignStatusChip'
 import CampaignMetricsKPIs from '../components/dashboard/CampaignMetricsKPIs'
 import MetricsChart from '../components/dashboard/MetricsChart'
+import CampaignAdPreview from '../components/campaign/CampaignAdPreview'
 import { useCampaigns } from '../hooks/useCampaigns'
 import { useCampaignMetrics } from '../hooks/useCampaignMetrics'
 import { useAppAlert } from '../context/AppAlertContext'
@@ -189,6 +190,30 @@ const CampaignDetailPage: React.FC = () => {
             </Box>
           )}
         </Box>
+
+        {/* ── Ad preview ── */}
+        {(campaign.assetUrl || campaign.muxPlaybackUrl) && (
+          <Box sx={{ mb: 4 }}>
+            <Typography variant="subtitle1" fontWeight={600} mb={2} color="text.secondary">
+              Your Ad
+            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: { xs: 'center', sm: 'flex-start' } }}>
+              <CampaignAdPreview
+                draft={campaign as any}
+                assetUrl={campaign.assetUrl ?? undefined}
+                muxPlaybackUrl={campaign.muxPlaybackUrl ?? undefined}
+                maxWidth={campaign.placement === 'video_feed' ? 300 : undefined}
+              />
+            </Box>
+            {campaign.placement === 'video_feed' && campaign.muxStatus && campaign.muxStatus !== 'ready' && (
+              <Typography variant="caption" color={campaign.muxStatus === 'errored' ? 'error' : 'text.secondary'} sx={{ display: 'block', mt: 1 }}>
+                {campaign.muxStatus === 'errored'
+                  ? `Video processing failed${campaign.muxError ? `: ${campaign.muxError}` : '.'}`
+                  : 'Video is still being optimised for all platforms — check back shortly.'}
+              </Typography>
+            )}
+          </Box>
+        )}
 
         <Divider sx={{ mb: 4 }} />
 
