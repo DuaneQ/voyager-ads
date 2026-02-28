@@ -134,7 +134,7 @@ const CampaignDetailPage: React.FC = () => {
                 isUnderReview={campaign.isUnderReview}
               />
             </Box>
-            {!campaign.isUnderReview && (campaign.status === 'paused' || campaign.status === 'draft') && (
+            {!campaign.isUnderReview && campaign.status !== 'completed' && (
               <Button
                 component={RouterLink}
                 to={`/campaigns/${campaign.id}/edit`}

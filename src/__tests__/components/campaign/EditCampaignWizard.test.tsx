@@ -129,12 +129,20 @@ describe('EditCampaignWizard', () => {
     expect(screen.getByText(/currently under review/i)).toBeInTheDocument()
   })
 
-  it('shows "not editable" when campaign status is active and not under review', () => {
+  it('renders the wizard for an active, non-under-review campaign', () => {
     mockHook.mockReturnValue(makeHookReturn({
       campaign: makeCampaign({ status: 'active', isUnderReview: false }),
     }))
     renderWithRouter(<EditCampaignWizard campaignId="c1" />)
-    expect(screen.getByText(/Only paused or draft campaigns/i)).toBeInTheDocument()
+    expect(screen.getByTestId('edit-campaign-wizard')).toBeInTheDocument()
+  })
+
+  it('shows "not editable" when campaign status is completed', () => {
+    mockHook.mockReturnValue(makeHookReturn({
+      campaign: makeCampaign({ status: 'completed', isUnderReview: false }),
+    }))
+    renderWithRouter(<EditCampaignWizard campaignId="c1" />)
+    expect(screen.getByText(/Completed campaigns cannot be edited/i)).toBeInTheDocument()
   })
 
   it('renders the wizard for a paused, non-under-review campaign', () => {

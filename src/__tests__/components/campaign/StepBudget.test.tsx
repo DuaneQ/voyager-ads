@@ -33,4 +33,13 @@ describe('StepBudget', () => {
     fireEvent.change(screen.getByLabelText(/Budget amount/i), { target: { value: '25' } })
     expect(patch).toHaveBeenCalledWith('budgetAmount', '25')
   })
+
+  it('calls patch when budget type changes', async () => {
+    const patch = makePatch()
+    render(<StepBudget draft={EMPTY_DRAFT} patch={patch} />)
+    // MUI Select: open the dropdown then click the target option
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: /Budget type/i }))
+    fireEvent.click(await screen.findByRole('option', { name: /Lifetime/i }))
+    expect(patch).toHaveBeenCalledWith('budgetType', 'lifetime')
+  })
 })

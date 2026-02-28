@@ -174,6 +174,70 @@ describe('SignInPage', () => {
     )
   })
 
+  it('shows success info after resending verification email from verify screen', async () => {
+    render(<SignInPage />, { wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter> })
+
+    // Get to verify screen via sign-up flow (signUpWithEmail returns emailVerified: false by default)
+    fireEvent.click(screen.getByText(/Sign up/i))
+    fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'u@x.com' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'pass123' } })
+    fireEvent.click(screen.getByRole('button', { name: /Create account/i }))
+    await waitFor(() => screen.getByRole('heading', { name: /Verify your email/i }))
+
+    fireEvent.click(screen.getByRole('button', { name: /Resend verification email/i }))
+    await waitFor(() => expect(authService.resendVerificationEmail as any).toHaveBeenCalled())
+    await waitFor(() => expect(screen.getByText(/Verification email resent/i)).toBeInTheDocument())
+  })
+
+  it('shows error when resend verification email fails', async () => {
+    ;(authService.resendVerificationEmail as any).mockRejectedValueOnce({ code: 'auth/too-many-requests' })
+    render(<SignInPage />, { wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter> })
+
+    fireEvent.click(screen.getByText(/Sign up/i))
+    fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'u@x.com' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'pass123' } })
+    fireEvent.click(screen.getByRole('button', { name: /Create account/i }))
+    await waitFor(() => screen.getByRole('heading', { name: /Verify your email/i }))
+
+    fireEvent.click(screen.getByRole('button', { name: /Resend verification email/i }))
+    await waitFor(() => expect(screen.getByText(/Too many attempts/i)).toBeInTheDocument())
+  })
+
+  it('returns to sign-in from verify screen via "Back to sign in"', async () => {
+    render(<SignInPage />, { wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter> })
+
+    fireEvent.click(screen.getByText(/Sign up/i))
+    fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'u@x.com' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'pass123' } })
+    fireEvent.click(screen.getByRole('button', { name: /Create account/i }))
+    await waitFor(() => screen.getByRole('heading', { name: /Verify your email/i }))
+
+    fireEvent.click(screen.getByRole('button', { name: /Back to sign in/i }))
+    expect(screen.getByRole('heading', { name: /Sign in/i })).toBeInTheDocument()
+  })
+
+  it('shows friendly error for auth/email-already-in-use on sign up', async () => {
+    ;(authService.signUpWithEmail as any).mockRejectedValueOnce({ code: 'auth/email-already-in-use' })
+    render(<SignInPage />, { wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter> })
+
+    fireEvent.click(screen.getByText(/Sign up/i))
+    fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'taken@x.com' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'pass123' } })
+    fireEvent.click(screen.getByRole('button', { name: /Create account/i }))
+    await waitFor(() => expect(screen.getByText(/An account with this email already exists/i)).toBeInTheDocument())
+  })
+
+  it('shows friendly error for unknown error code', async () => {
+    ;(authService.signInWithEmail as any).mockRejectedValueOnce({ code: 'auth/network-request-failed' })
+    render(<SignInPage />, { wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter> })
+
+    fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'a@b.com' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'pw' } })
+    const submit = screen.getAllByRole('button', { name: /Sign in/i }).find(b => b.getAttribute('type') === 'submit')!
+    fireEvent.click(submit)
+    await waitFor(() => expect(screen.getByText(/Network error/i)).toBeInTheDocument())
+  })
+
   it('does NOT redirect when authenticated but email unverified', async () => {
     ;(useAuthStore as ReturnType<typeof vi.fn>).mockImplementation(
       (selector: (s: { isAuthenticated: boolean; isInitialized: boolean; user: { emailVerified: boolean } | null }) => unknown) =>

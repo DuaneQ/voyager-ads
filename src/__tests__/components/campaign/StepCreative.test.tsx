@@ -119,6 +119,48 @@ describe('StepCreative', () => {
     expect(screen.getByText('5/300')).toBeInTheDocument()
   })
 
+  it('calls patch with primaryText when typing', () => {
+    const patch = makePatch()
+    render(<StepCreative draft={EMPTY_DRAFT} patch={patch} />)
+    fireEvent.change(screen.getByLabelText(/Primary text/i), { target: { value: 'Discover paradise' } })
+    expect(patch).toHaveBeenCalledWith('primaryText', 'Discover paradise')
+  })
+
+  it('calls patch with landingUrl when typing', () => {
+    const patch = makePatch()
+    render(<StepCreative draft={EMPTY_DRAFT} patch={patch} />)
+    fireEvent.change(screen.getByLabelText(/Landing URL/i), { target: { value: 'https://example.com' } })
+    expect(patch).toHaveBeenCalledWith('landingUrl', 'https://example.com')
+  })
+
+  it('calls patch with cta when changed', async () => {
+    const patch = makePatch()
+    render(<StepCreative draft={EMPTY_DRAFT} patch={patch} />)
+    // MUI Select: open dropdown then click a different option (EMPTY_DRAFT.cta is already 'Learn More')
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: /Call to action/i }))
+    fireEvent.click(await screen.findByRole('option', { name: /Book Now/i }))
+    expect(patch).toHaveBeenCalledWith('cta', 'Book Now')
+  })
+
+  it('shows a size error when file exceeds the placement limit', () => {
+    const patch = makePatch()
+    render(<StepCreative draft={{ ...EMPTY_DRAFT, placement: 'itinerary_feed' }} patch={patch} />)
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+    const file = new File(['x'], 'big.jpg', { type: 'image/jpeg' })
+    Object.defineProperty(file, 'size', { value: 11 * 1024 * 1024 })
+    fireEvent.change(fileInput, { target: { files: [file] } })
+    expect(screen.getByText(/exceeds the 10 MB limit/i)).toBeInTheDocument()
+    expect(patch).not.toHaveBeenCalledWith('assetFile', expect.anything())
+  })
+
+  it('calls patch with null when file input is cleared', () => {
+    const patch = makePatch()
+    render(<StepCreative draft={EMPTY_DRAFT} patch={patch} />)
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+    fireEvent.change(fileInput, { target: { files: [] } })
+    expect(patch).toHaveBeenCalledWith('assetFile', null)
+  })
+
   describe('ai_slot specific fields', () => {
     it('shows Business type, Address, Phone, Email, and Promo code fields for ai_slot', () => {
       render(<StepCreative draft={{ ...EMPTY_DRAFT, placement: 'ai_slot' }} patch={makePatch()} />)

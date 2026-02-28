@@ -11,7 +11,7 @@ import Stepper from '@mui/material/Stepper'
 import Typography from '@mui/material/Typography'
 import { useEditCampaign } from '../../hooks/useEditCampaign'
 import { useAppAlert } from '../../context/AppAlertContext'
-import { isStepValid, STEP_LABELS } from '../../utils/wizardUtils'
+import { isStepValid, STEP_LABELS, type StepValidOptions } from '../../utils/wizardUtils'
 import StepDetails from './StepDetails'
 import StepCreative from './StepCreative'
 import StepTargeting from './StepTargeting'
@@ -41,7 +41,8 @@ const EditCampaignWizard: React.FC<Props> = ({ campaignId }) => {
   const { showError } = useAppAlert()
   const navigate = useNavigate()
   const isLast = step === STEP_LABELS.length - 1
-  const isValid = isStepValid(step, draft)
+  const stepValidOptions: StepValidOptions = { allowPastStartDate: true }
+  const isValid = isStepValid(step, draft, stepValidOptions)
 
   // Surface async submit errors through the global Snackbar
   useEffect(() => {
@@ -78,9 +79,8 @@ const EditCampaignWizard: React.FC<Props> = ({ campaignId }) => {
     )
   }
 
-  // Campaigns that are active or under review cannot be edited
-  const isEditable = !campaign.isUnderReview &&
-    (campaign.status === 'paused' || campaign.status === 'draft')
+  // Completed campaigns cannot be edited; under-review campaigns must wait for review to finish
+  const isEditable = !campaign.isUnderReview && campaign.status !== 'completed'
 
   if (!isEditable) {
     return (
@@ -88,7 +88,7 @@ const EditCampaignWizard: React.FC<Props> = ({ campaignId }) => {
         <Alert severity="info" sx={{ mb: 3, textAlign: 'left' }}>
           {campaign.isUnderReview
             ? 'This campaign is currently under review and cannot be edited until the review is complete.'
-            : 'Only paused or draft campaigns can be edited.'}
+            : 'Completed campaigns cannot be edited.'}
         </Alert>
         <Button variant="outlined" onClick={() => navigate(`/campaigns/${campaignId}`)}>
           Back to campaign

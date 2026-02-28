@@ -16,6 +16,10 @@ export default defineConfig({
       include: ['src/**/*.{ts,tsx}'],
       exclude: [
         'src/main.tsx',          // entry point — no logic to test
+        'src/App.tsx',           // routing shell — only lazy imports, no testable logic
+        'src/store/index.ts',    // barrel re-export — no executable logic
+        'src/services/admin/adminServiceInstance.ts',         // singleton instance — no testable logic
+        'src/repositories/campaignRepositoryInstance.ts',     // singleton instance — no testable logic
         'src/vite-env.d.ts',
         'src/**/*.d.ts',
       ],
