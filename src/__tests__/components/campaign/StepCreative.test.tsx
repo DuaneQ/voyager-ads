@@ -58,7 +58,7 @@ describe('StepCreative', () => {
 
   it('shows spec text for itinerary_feed', () => {
     render(<StepCreative draft={{ ...EMPTY_DRAFT, placement: 'itinerary_feed' }} patch={makePatch()} />)
-    expect(screen.getByText(/Square image · JPG or PNG · max 10 MB/i)).toBeInTheDocument()
+    expect(screen.getByText(/Square image · JPEG, PNG, or WebP · max 10 MB/i)).toBeInTheDocument()
   })
 
   it('shows upload button with "Upload asset" when no file', () => {
@@ -80,11 +80,22 @@ describe('StepCreative', () => {
 
   it('calls patch with the selected file on upload', () => {
     const patch = makePatch()
-    render(<StepCreative draft={EMPTY_DRAFT} patch={patch} />)
+    // Use itinerary_feed so image/jpeg passes the constraint check
+    render(<StepCreative draft={{ ...EMPTY_DRAFT, placement: 'itinerary_feed' }} patch={patch} />)
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
     const file = new File(['x'], 'ad.jpg', { type: 'image/jpeg' })
     fireEvent.change(fileInput, { target: { files: [file] } })
     expect(patch).toHaveBeenCalledWith('assetFile', file)
+  })
+
+  it('shows a file error and does not call patch when MIME type is invalid', () => {
+    const patch = makePatch()
+    render(<StepCreative draft={{ ...EMPTY_DRAFT, placement: 'itinerary_feed' }} patch={patch} />)
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+    const file = new File(['x'], 'ad.gif', { type: 'image/gif' })
+    fireEvent.change(fileInput, { target: { files: [file] } })
+    expect(screen.getByText(/Invalid file type/i)).toBeInTheDocument()
+    expect(patch).not.toHaveBeenCalledWith('assetFile', expect.anything())
   })
 
   it('shows video upload placeholder for video_feed', () => {
@@ -106,6 +117,48 @@ describe('StepCreative', () => {
   it('renders character count for primary text', () => {
     render(<StepCreative draft={{ ...EMPTY_DRAFT, primaryText: 'Hello' }} patch={makePatch()} />)
     expect(screen.getByText('5/300')).toBeInTheDocument()
+  })
+
+  it('calls patch with primaryText when typing', () => {
+    const patch = makePatch()
+    render(<StepCreative draft={EMPTY_DRAFT} patch={patch} />)
+    fireEvent.change(screen.getByLabelText(/Primary text/i), { target: { value: 'Discover paradise' } })
+    expect(patch).toHaveBeenCalledWith('primaryText', 'Discover paradise')
+  })
+
+  it('calls patch with landingUrl when typing', () => {
+    const patch = makePatch()
+    render(<StepCreative draft={EMPTY_DRAFT} patch={patch} />)
+    fireEvent.change(screen.getByLabelText(/Landing URL/i), { target: { value: 'https://example.com' } })
+    expect(patch).toHaveBeenCalledWith('landingUrl', 'https://example.com')
+  })
+
+  it('calls patch with cta when changed', async () => {
+    const patch = makePatch()
+    render(<StepCreative draft={EMPTY_DRAFT} patch={patch} />)
+    // MUI Select: open dropdown then click a different option (EMPTY_DRAFT.cta is already 'Learn More')
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: /Call to action/i }))
+    fireEvent.click(await screen.findByRole('option', { name: /Book Now/i }))
+    expect(patch).toHaveBeenCalledWith('cta', 'Book Now')
+  })
+
+  it('shows a size error when file exceeds the placement limit', () => {
+    const patch = makePatch()
+    render(<StepCreative draft={{ ...EMPTY_DRAFT, placement: 'itinerary_feed' }} patch={patch} />)
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+    const file = new File(['x'], 'big.jpg', { type: 'image/jpeg' })
+    Object.defineProperty(file, 'size', { value: 11 * 1024 * 1024 })
+    fireEvent.change(fileInput, { target: { files: [file] } })
+    expect(screen.getByText(/exceeds the 10 MB limit/i)).toBeInTheDocument()
+    expect(patch).not.toHaveBeenCalledWith('assetFile', expect.anything())
+  })
+
+  it('calls patch with null when file input is cleared', () => {
+    const patch = makePatch()
+    render(<StepCreative draft={EMPTY_DRAFT} patch={patch} />)
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+    fireEvent.change(fileInput, { target: { files: [] } })
+    expect(patch).toHaveBeenCalledWith('assetFile', null)
   })
 
   describe('ai_slot specific fields', () => {

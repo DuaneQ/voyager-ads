@@ -14,6 +14,13 @@ vi.mock('../../components/common/Nav', () => ({
   ),
 }))
 
+vi.mock('../../components/dashboard/MetricsChart', () => ({
+  __esModule: true,
+  default: ({ series }: { series: { id: string }[] }) => (
+    <div data-testid="metrics-chart" data-series-count={series.length} />
+  ),
+}))
+
 vi.mock('../../store/authStore', () => ({
   default: (selector: (s: { user: User | null }) => unknown) =>
     selector({ user: { uid: 'test-user' } as User }),
@@ -26,6 +33,10 @@ vi.mock('../../hooks/useCampaigns', () => ({
     error: null,
     refetch: vi.fn(),
   }),
+}))
+
+vi.mock('../../hooks/useMultiCampaignMetrics', () => ({
+  useMultiCampaignMetrics: vi.fn().mockReturnValue({ metricsMap: {}, loading: false }),
 }))
 
 import DashboardPage from '../../pages/DashboardPage'
@@ -79,5 +90,23 @@ describe('DashboardPage', () => {
     renderDashboard()
     expect(screen.getByText('Firestore unavailable')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Retry/i })).toBeInTheDocument()
+  })
+
+  it('passes campaign ids to useMultiCampaignMetrics', async () => {
+    const { useCampaigns } = await import('../../hooks/useCampaigns')
+    const { useMultiCampaignMetrics } = await import('../../hooks/useMultiCampaignMetrics')
+    vi.mocked(useCampaigns).mockReturnValueOnce({
+      campaigns: [
+        { id: 'c1', uid: 'u1', name: 'Camp A', status: 'active', isUnderReview: false } as any,
+        { id: 'c2', uid: 'u1', name: 'Camp B', status: 'draft', isUnderReview: true } as any,
+      ],
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+    })
+    renderDashboard()
+    expect(vi.mocked(useMultiCampaignMetrics)).toHaveBeenCalledWith(
+      expect.arrayContaining(['c1', 'c2'])
+    )
   })
 })

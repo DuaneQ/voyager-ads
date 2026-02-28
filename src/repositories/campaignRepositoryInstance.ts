@@ -21,6 +21,9 @@ const e2eStub: ICampaignRepository = {
   async getAllByUser() {
     return []
   },
+  async getAllPending() {
+    return []
+  },
   async update() {
     // no-op
   },

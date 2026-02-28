@@ -103,6 +103,25 @@ export const EMPTY_DRAFT: CampaignDraft = {
  */
 export type CampaignData = Omit<CampaignDraft, 'assetFile'> & {
   assetUrl: string | null
+  /** Email of the advertiser at submission time — stored for admin review. */
+  userEmail: string
+  /**
+   * Firebase Storage path of the uploaded asset (e.g. `ads/{uid}/{ts}_file.mp4`).
+   * Used by the processAdVideoWithMux Cloud Function to generate a signed URL
+   * for Mux ingestion. Only set for video_feed campaigns.
+   */
+  assetStoragePath?: string
+  // ─── Mux transcoding fields (video_feed only) ──────────────────────────
+  // Written by the processAdVideoWithMux Cloud Function and the muxWebhook.
+  // Absent on non-video campaigns and on newly created video campaigns before
+  // the Cloud Function has run.
+  muxAssetId?: string
+  muxPlaybackId?: string
+  /** HLS m3u8 URL — use this for playback when present; fall back to assetUrl. */
+  muxPlaybackUrl?: string
+  muxThumbnailUrl?: string
+  muxStatus?: 'preparing' | 'ready' | 'errored'
+  muxError?: string
 }
 
 /**
@@ -119,6 +138,16 @@ export interface Campaign extends CampaignData {
    * campaign to go live. Firestore rules prevent clients from clearing this flag.
    */
   isUnderReview: boolean
+  /** Optional note left by the admin when rejecting a campaign. */
+  reviewNote?: string
   createdAt: string    // ISO 8601 string (converted from Firestore Timestamp on read)
   updatedAt: string
+  /**
+   * Lifetime impression and click counters kept in sync by the server-side
+   * tracking pipeline via FieldValue.increment. Used in the campaign table so
+   * each row can show metrics without querying the daily_metrics subcollection.
+   * Absent (undefined) on campaigns that have not yet served any impressions.
+   */
+  totalImpressions?: number
+  totalClicks?: number
 }

@@ -1,8 +1,26 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { screen } from '@testing-library/react'
 import { render } from '../../../testUtils/test-utils'
 import CampaignAdPreview from '../../../components/campaign/CampaignAdPreview'
 import { EMPTY_DRAFT } from '../../../types/campaign'
+
+// ─── hls.js mock ─────────────────────────────────────────────────────────────
+// Must use vi.hoisted so variables are assigned before vi.mock hoisting runs.
+const hlsMocks = vi.hoisted(() => {
+  const instance = {
+    loadSource: vi.fn(),
+    attachMedia: vi.fn(),
+    destroy: vi.fn(),
+  }
+  // Regular function (not arrow) so `new HlsCtor()` works
+  function HlsCtor(this: unknown) { return instance }
+  HlsCtor.isSupported = vi.fn(() => true)
+  // Expose ctor as a vi.fn so call assertions work
+  const ctor = vi.fn(HlsCtor as unknown as () => typeof instance)
+  ctor.isSupported = HlsCtor.isSupported
+  return { instance, ctor }
+})
+vi.mock('hls.js', () => ({ default: hlsMocks.ctor }))
 
 describe('CampaignAdPreview', () => {
   describe('itinerary_feed', () => {
@@ -36,6 +54,16 @@ describe('CampaignAdPreview', () => {
   })
 
   describe('video_feed', () => {
+    beforeEach(() => {
+      vi.clearAllMocks()
+      hlsMocks.ctor.isSupported = vi.fn(() => true)
+      // jsdom's HTMLMediaElement.play() returns undefined; make it a resolved Promise
+      Object.defineProperty(HTMLMediaElement.prototype, 'play', {
+        configurable: true,
+        value: vi.fn(() => Promise.resolve()),
+      })
+    })
+
     it('renders the video feed preview label', () => {
       render(<CampaignAdPreview draft={{ ...EMPTY_DRAFT, placement: 'video_feed' }} />)
       expect(screen.getByText(/Preview · Video Feed/i)).toBeInTheDocument()
@@ -60,6 +88,53 @@ describe('CampaignAdPreview', () => {
         <CampaignAdPreview draft={{ ...EMPTY_DRAFT, placement: 'video_feed', cta: 'Book Now' }} />
       )
       expect(screen.getByText('Book Now')).toBeInTheDocument()
+    })
+
+    it('sets video.src directly and plays for a raw (non-HLS) URL', () => {
+      const rawUrl = 'https://storage.googleapis.com/bucket/video.mp4'
+      render(
+        <CampaignAdPreview
+          draft={{ ...EMPTY_DRAFT, placement: 'video_feed' }}
+          assetUrl={rawUrl}
+        />
+      )
+      const video = document.querySelector('video') as HTMLVideoElement
+      expect(video).not.toBeNull()
+      expect(video.src).toBe(rawUrl)
+      expect(hlsMocks.ctor).not.toHaveBeenCalled()
+      expect(HTMLMediaElement.prototype.play).toHaveBeenCalled()
+    })
+
+    it('uses Hls.js for an HLS URL when Hls.isSupported() is true', () => {
+      const hlsUrl = 'https://stream.mux.com/abc123.m3u8'
+      render(
+        <CampaignAdPreview
+          draft={{ ...EMPTY_DRAFT, placement: 'video_feed' }}
+          muxPlaybackUrl={hlsUrl}
+        />
+      )
+      expect(hlsMocks.ctor).toHaveBeenCalledTimes(1)
+      expect(hlsMocks.instance.loadSource).toHaveBeenCalledWith(hlsUrl)
+      expect(hlsMocks.instance.attachMedia).toHaveBeenCalled()
+    })
+
+    it('falls back to native src for HLS when Hls.isSupported() is false (Safari)', () => {
+      hlsMocks.ctor.isSupported = vi.fn(() => false)
+      const hlsUrl = 'https://stream.mux.com/xyz.m3u8'
+      // Simulate Safari native HLS support
+      Object.defineProperty(HTMLMediaElement.prototype, 'canPlayType', {
+        configurable: true,
+        value: (type: string) => (type === 'application/vnd.apple.mpegurl' ? 'probably' : ''),
+      })
+      render(
+        <CampaignAdPreview
+          draft={{ ...EMPTY_DRAFT, placement: 'video_feed' }}
+          muxPlaybackUrl={hlsUrl}
+        />
+      )
+      const video = document.querySelector('video') as HTMLVideoElement
+      expect(hlsMocks.ctor).not.toHaveBeenCalled()
+      expect(video.src).toBe(hlsUrl)
     })
   })
 

@@ -1,5 +1,6 @@
 import {
   type Firestore,
+  type QueryDocumentSnapshot,
   type Timestamp,
   addDoc,
   collection,
@@ -26,6 +27,13 @@ export interface ICampaignRepository {
   getAllByUser(uid: string): Promise<Campaign[]>
 
   /**
+   * Returns all campaigns currently under review, newest first.
+   * Admin-only — Firestore rules must allow access only for the admin UID
+   * or this is called exclusively from admin-authed sessions.
+   */
+  getAllPending(): Promise<Campaign[]>
+
+  /**
    * Applies a partial update to a campaign.
    * `uid` is required so callers cannot accidentally update another user's document —
    * Firestore rules enforce this server-side; the client also validates ownership.
@@ -33,7 +41,7 @@ export interface ICampaignRepository {
   update(
     id: string,
     uid: string,
-    partial: Partial<CampaignData & { status: CampaignStatus }>,
+    partial: Partial<CampaignData & { status: CampaignStatus; isUnderReview: boolean }>,
   ): Promise<void>
 }
 
@@ -75,25 +83,42 @@ export class FirestoreCampaignRepository implements ICampaignRepository {
       orderBy('createdAt', 'desc'),
     )
     const snapshot = await getDocs(q)
-    return snapshot.docs.map((d) => {
-      const raw = d.data()
-      return {
-        ...(raw as CampaignData),
-        id: d.id,
-        uid: raw.uid as string,
-        status: raw.status as CampaignStatus,
-        isUnderReview: (raw.isUnderReview ?? true) as boolean,
-        // Convert Firestore Timestamps to ISO strings at the boundary
-        createdAt: (raw.createdAt as Timestamp | null)?.toDate().toISOString() ?? '',
-        updatedAt: (raw.updatedAt as Timestamp | null)?.toDate().toISOString() ?? '',
-      }
-    })
+    return snapshot.docs.map((d) => this.mapDocToCampaign(d))
+  }
+
+  async getAllPending(): Promise<Campaign[]> {
+    // Query without orderBy to avoid requiring a composite Firestore index.
+    // Sorted client-side instead.
+    const q = query(
+      collection(this.db, COLLECTION),
+      where('isUnderReview', '==', true),
+    )
+    const snapshot = await getDocs(q)
+    return snapshot.docs
+      .map((d) => this.mapDocToCampaign(d))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+  }
+
+  private mapDocToCampaign(d: QueryDocumentSnapshot): Campaign {
+    const raw = d.data()
+    return {
+      ...(raw as CampaignData),
+      id: d.id,
+      uid: raw.uid as string,
+      status: raw.status as CampaignStatus,
+      isUnderReview: (raw.isUnderReview ?? true) as boolean,
+      reviewNote: raw.reviewNote as string | undefined,
+      createdAt: (raw.createdAt as Timestamp | null)?.toDate().toISOString() ?? '',
+      updatedAt: (raw.updatedAt as Timestamp | null)?.toDate().toISOString() ?? '',
+      totalImpressions: typeof raw.totalImpressions === 'number' ? raw.totalImpressions : undefined,
+      totalClicks: typeof raw.totalClicks === 'number' ? raw.totalClicks : undefined,
+    }
   }
 
   async update(
     id: string,
     _uid: string, // retained in signature for interface contract clarity; rules enforce server-side
-    partial: Partial<CampaignData & { status: CampaignStatus }>,
+    partial: Partial<CampaignData & { status: CampaignStatus; isUnderReview: boolean }>,
   ): Promise<void> {
     await updateDoc(doc(this.db, COLLECTION, id), {
       ...partial,

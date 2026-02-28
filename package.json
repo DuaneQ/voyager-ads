@@ -23,6 +23,7 @@
     "@mui/material": "^7.3.8",
     "@mui/x-charts": "^8.27.0",
     "firebase": "^12.9.0",
+    "hls.js": "^1.6.15",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-helmet-async": "^2.0.5",

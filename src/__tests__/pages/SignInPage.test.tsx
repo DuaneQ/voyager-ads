@@ -5,10 +5,12 @@ import { describe, it, vi, beforeEach } from 'vitest'
 vi.mock('../../services/auth/authServiceInstance', () => ({
   __esModule: true,
   authService: {
-    signInWithGoogle: vi.fn().mockResolvedValue({}),
-    signInWithEmail: vi.fn().mockResolvedValue({}),
-    signUpWithEmail: vi.fn().mockResolvedValue({}),
+    signInWithGoogle: vi.fn().mockResolvedValue({ emailVerified: true }),
+    signInWithEmail: vi.fn().mockResolvedValue({ emailVerified: true }),
+    signUpWithEmail: vi.fn().mockResolvedValue({ emailVerified: false }),
     sendPasswordReset: vi.fn().mockResolvedValue(undefined),
+    resendVerificationEmail: vi.fn().mockResolvedValue(undefined),
+    signOut: vi.fn().mockResolvedValue(undefined),
   }
 }))
 
@@ -17,13 +19,14 @@ vi.mock('../../components/common/Nav', () => ({ __esModule: true, default: () =>
 
 // Default: not yet authenticated; individual tests can override via mockImplementation
 vi.mock('../../store/authStore', () => ({
-  default: vi.fn((selector: (s: { isAuthenticated: boolean; isInitialized: boolean }) => unknown) =>
-    selector({ isAuthenticated: false, isInitialized: true })
+  default: vi.fn((selector: (s: { isAuthenticated: boolean; isInitialized: boolean; user: null | { emailVerified: boolean } }) => unknown) =>
+    selector({ isAuthenticated: false, isInitialized: true, user: null })
   ),
 }))
 
 // Shared navigate mock — stable reference so redirect tests can assert on it
 const mockNavigate = vi.fn()
+const mockUseLocation = vi.fn().mockReturnValue({ state: {} })
 
 // Keep router hooks simple for the component
 vi.mock('react-router-dom', async () => {
@@ -31,7 +34,7 @@ vi.mock('react-router-dom', async () => {
   return {
     ...actual,
     useNavigate: () => mockNavigate,
-    useLocation: () => ({ state: {} }),
+    useLocation: () => mockUseLocation(),
   }
 })
 
@@ -76,11 +79,11 @@ describe('SignInPage', () => {
     render(<SignInPage />, { wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter> })
 
     fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'a@b.com' } })
-    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'pw' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } })
 
     const submit = screen.getAllByRole('button', { name: /Sign in/i }).find(b => b.getAttribute('type') === 'submit')!
     fireEvent.click(submit)
-    await waitFor(() => expect((authService.signInWithEmail as any)).toHaveBeenCalledWith('a@b.com', 'pw'))
+    await waitFor(() => expect((authService.signInWithEmail as any)).toHaveBeenCalledWith('a@b.com', 'password123'))
   })
 
   it('shows friendly error message on auth error', async () => {
@@ -88,24 +91,58 @@ describe('SignInPage', () => {
     render(<SignInPage />, { wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter> })
 
     fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'a@b.com' } })
-    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'bad' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } })
 
     const submitBtn = screen.getAllByRole('button', { name: /Sign in/i }).find(b => b.getAttribute('type') === 'submit')!
     fireEvent.click(submitBtn)
     await waitFor(() => expect(screen.getByText(/Incorrect password\./i)).toBeInTheDocument())
   })
 
-  it('submits sign up flow when switching to Sign up', async () => {
+  it('submits sign up flow and shows verify screen', async () => {
     render(<SignInPage />, { wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter> })
 
     fireEvent.click(screen.getByText(/Sign up/i))
     expect(screen.getByRole('heading', { name: /Create account/i })).toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'new@u.com' } })
-    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'newpw' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'newpassword1' } })
+    fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: 'newpassword1' } })
 
     fireEvent.click(screen.getByRole('button', { name: /Create account/i }))
-    await waitFor(() => expect((authService.signUpWithEmail as any)).toHaveBeenCalledWith('new@u.com', 'newpw'))
+    await waitFor(() => expect((authService.signUpWithEmail as any)).toHaveBeenCalledWith('new@u.com', 'newpassword1'))
+    await waitFor(() => expect(screen.getByRole('heading', { name: /Verify your email/i })).toBeInTheDocument())
+  })
+
+  it('shows verify screen when signing in with unverified email', async () => {
+    ;(authService.signInWithEmail as any).mockResolvedValue({ emailVerified: false })
+    render(<SignInPage />, { wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter> })
+
+    fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'a@b.com' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } })
+
+    const submit = screen.getAllByRole('button', { name: /Sign in/i }).find(b => b.getAttribute('type') === 'submit')!
+    fireEvent.click(submit)
+    await waitFor(() => expect(screen.getByRole('heading', { name: /Verify your email/i })).toBeInTheDocument())
+  })
+
+  it('shows verify screen immediately when needsVerification location state is set', () => {
+    // Simulate ProtectedRoute redirect: user is authenticated but unverified
+    ;(useAuthStore as ReturnType<typeof vi.fn>).mockImplementation(
+      (selector: (s: { isAuthenticated: boolean; isInitialized: boolean; user: { emailVerified: boolean } | null }) => unknown) =>
+        selector({ isAuthenticated: true, isInitialized: true, user: { emailVerified: false } })
+    )
+    mockUseLocation.mockReturnValueOnce({ state: { needsVerification: true } })
+    render(<SignInPage />, { wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter> })
+    expect(screen.getByRole('heading', { name: /Verify your email/i })).toBeInTheDocument()
+    const resendBtn = screen.getByRole('button', { name: /Resend verification email/i })
+    expect(resendBtn).toBeInTheDocument()
+    expect(resendBtn).not.toBeDisabled()
+
+    // Restore default so subsequent tests are not affected
+    ;(useAuthStore as ReturnType<typeof vi.fn>).mockImplementation(
+      (selector: (s: { isAuthenticated: boolean; isInitialized: boolean; user: null | { emailVerified: boolean } }) => unknown) =>
+        selector({ isAuthenticated: false, isInitialized: true, user: null })
+    )
   })
 
   it('shows info message after successful password reset', async () => {
@@ -119,10 +156,162 @@ describe('SignInPage', () => {
     await waitFor(() => expect(screen.getByText(/Password reset email sent/i)).toBeInTheDocument())
   })
 
+  it('shows unverified warning with resend link on sign-in form when session is unverified', () => {
+    ;(useAuthStore as ReturnType<typeof vi.fn>).mockImplementation(
+      (selector: (s: { isAuthenticated: boolean; isInitialized: boolean; user: { emailVerified: boolean } | null }) => unknown) =>
+        selector({ isAuthenticated: true, isInitialized: true, user: { emailVerified: false } })
+    )
+    render(<SignInPage />, { wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter> })
+    // Should still show the sign-in form (not auto-bounced to verify)
+    expect(screen.getByRole('heading', { name: /Sign in/i })).toBeInTheDocument()
+    // Warning notice with a resend link should be visible
+    expect(screen.getByText(/Email not verified\./i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Resend verification email/i })).toBeInTheDocument()
+
+    // Restore default
+    ;(useAuthStore as ReturnType<typeof vi.fn>).mockImplementation(
+      (selector: (s: { isAuthenticated: boolean; isInitialized: boolean; user: null | { emailVerified: boolean } }) => unknown) =>
+        selector({ isAuthenticated: false, isInitialized: true, user: null })
+    )
+  })
+
+  it('shows success info after resending verification email from verify screen', async () => {
+    render(<SignInPage />, { wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter> })
+
+    // Get to verify screen via sign-up flow (signUpWithEmail returns emailVerified: false by default)
+    fireEvent.click(screen.getByText(/Sign up/i))
+    fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'u@x.com' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } })
+    fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: 'password123' } })
+    fireEvent.click(screen.getByRole('button', { name: /Create account/i }))
+    await waitFor(() => screen.getByRole('heading', { name: /Verify your email/i }))
+
+    fireEvent.click(screen.getByRole('button', { name: /Resend verification email/i }))
+    await waitFor(() => expect(authService.resendVerificationEmail as any).toHaveBeenCalled())
+    await waitFor(() => expect(screen.getByText(/Verification email resent/i)).toBeInTheDocument())
+  })
+
+  it('shows error when resend verification email fails', async () => {
+    ;(authService.resendVerificationEmail as any).mockRejectedValueOnce({ code: 'auth/too-many-requests' })
+    render(<SignInPage />, { wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter> })
+
+    fireEvent.click(screen.getByText(/Sign up/i))
+    fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'u@x.com' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } })
+    fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: 'password123' } })
+    fireEvent.click(screen.getByRole('button', { name: /Create account/i }))
+    await waitFor(() => screen.getByRole('heading', { name: /Verify your email/i }))
+
+    fireEvent.click(screen.getByRole('button', { name: /Resend verification email/i }))
+    await waitFor(() => expect(screen.getByText(/Too many attempts/i)).toBeInTheDocument())
+  })
+
+  it('returns to sign-in from verify screen via "Back to sign in"', async () => {
+    render(<SignInPage />, { wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter> })
+
+    fireEvent.click(screen.getByText(/Sign up/i))
+    fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'u@x.com' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } })
+    fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: 'password123' } })
+    fireEvent.click(screen.getByRole('button', { name: /Create account/i }))
+    await waitFor(() => screen.getByRole('heading', { name: /Verify your email/i }))
+
+    fireEvent.click(screen.getByRole('button', { name: /Back to sign in/i }))
+    expect(screen.getByRole('heading', { name: /Sign in/i })).toBeInTheDocument()
+  })
+
+  it('shows friendly error for auth/email-already-in-use on sign up', async () => {
+    ;(authService.signUpWithEmail as any).mockRejectedValueOnce({ code: 'auth/email-already-in-use' })
+    render(<SignInPage />, { wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter> })
+
+    fireEvent.click(screen.getByText(/Sign up/i))
+    fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'taken@x.com' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } })
+    fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: 'password123' } })
+    fireEvent.click(screen.getByRole('button', { name: /Create account/i }))
+    await waitFor(() => expect(screen.getByText(/An account with this email already exists/i)).toBeInTheDocument())
+  })
+
+  it('shows friendly error for unknown error code', async () => {
+    ;(authService.signInWithEmail as any).mockRejectedValueOnce({ code: 'auth/network-request-failed' })
+    render(<SignInPage />, { wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter> })
+
+    fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'a@b.com' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } })
+    const submit = screen.getAllByRole('button', { name: /Sign in/i }).find(b => b.getAttribute('type') === 'submit')!
+    fireEvent.click(submit)
+    await waitFor(() => expect(screen.getByText(/Network error/i)).toBeInTheDocument())
+  })
+
+  it('shows error when sign-in password is shorter than 10 characters', async () => {
+    render(<SignInPage />, { wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter> })
+
+    fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'a@b.com' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'short' } })
+    const submit = screen.getAllByRole('button', { name: /Sign in/i }).find(b => b.getAttribute('type') === 'submit')!
+    fireEvent.click(submit)
+    expect(screen.getByText(/Password must be at least 10 characters/i)).toBeInTheDocument()
+    expect(authService.signInWithEmail as any).not.toHaveBeenCalled()
+  })
+
+  it('shows error when sign-up passwords do not match', async () => {
+    render(<SignInPage />, { wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter> })
+
+    fireEvent.click(screen.getByText(/Sign up/i))
+    fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'a@b.com' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } })
+    fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: 'different456' } })
+    fireEvent.click(screen.getByRole('button', { name: /Create account/i }))
+    expect(screen.getByText(/Passwords do not match/i)).toBeInTheDocument()
+    expect(authService.signUpWithEmail as any).not.toHaveBeenCalled()
+  })
+
+  it('shows sign-up confirm password field that can toggle visibility', () => {
+    render(<SignInPage />, { wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter> })
+    fireEvent.click(screen.getByText(/Sign up/i))
+
+    const confirmInput = screen.getByLabelText('Confirm password') as HTMLInputElement
+    expect(confirmInput.type).toBe('password')
+    fireEvent.click(screen.getByRole('button', { name: /Show confirm password/i }))
+    expect(confirmInput.type).toBe('text')
+    fireEvent.click(screen.getByRole('button', { name: /Hide confirm password/i }))
+    expect(confirmInput.type).toBe('password')
+  })
+
+  it('password field can toggle visibility on sign-in', () => {
+    render(<SignInPage />, { wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter> })
+
+    const passwordInput = screen.getByLabelText('Password') as HTMLInputElement
+    expect(passwordInput.type).toBe('password')
+    fireEvent.click(screen.getByRole('button', { name: /Show password/i }))
+    expect(passwordInput.type).toBe('text')
+    fireEvent.click(screen.getByRole('button', { name: /Hide password/i }))
+    expect(passwordInput.type).toBe('password')
+  })
+
+  it('does NOT redirect when authenticated but email unverified', async () => {
+    ;(useAuthStore as ReturnType<typeof vi.fn>).mockImplementation(
+      (selector: (s: { isAuthenticated: boolean; isInitialized: boolean; user: { emailVerified: boolean } | null }) => unknown) =>
+        selector({ isAuthenticated: true, isInitialized: true, user: { emailVerified: false } })
+    )
+
+    render(<SignInPage />, { wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter> })
+
+    // navigate should never be called — the verify screen should hold
+    await new Promise((r) => setTimeout(r, 50))
+    expect(mockNavigate).not.toHaveBeenCalled()
+
+    // Restore default
+    ;(useAuthStore as ReturnType<typeof vi.fn>).mockImplementation(
+      (selector: (s: { isAuthenticated: boolean; isInitialized: boolean; user: null | { emailVerified: boolean } }) => unknown) =>
+        selector({ isAuthenticated: false, isInitialized: true, user: null })
+    )
+  })
+
   it('redirects to /dashboard when already authenticated on mount', async () => {
     ;(useAuthStore as ReturnType<typeof vi.fn>).mockImplementation(
-      (selector: (s: { isAuthenticated: boolean; isInitialized: boolean }) => unknown) =>
-        selector({ isAuthenticated: true, isInitialized: true })
+      (selector: (s: { isAuthenticated: boolean; isInitialized: boolean; user: { emailVerified: boolean } | null }) => unknown) =>
+        selector({ isAuthenticated: true, isInitialized: true, user: { emailVerified: true } })
     )
 
     render(<SignInPage />, { wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter> })
@@ -131,8 +320,8 @@ describe('SignInPage', () => {
 
     // Restore default
     ;(useAuthStore as ReturnType<typeof vi.fn>).mockImplementation(
-      (selector: (s: { isAuthenticated: boolean; isInitialized: boolean }) => unknown) =>
-        selector({ isAuthenticated: false, isInitialized: true })
+      (selector: (s: { isAuthenticated: boolean; isInitialized: boolean; user: null | { emailVerified: boolean } }) => unknown) =>
+        selector({ isAuthenticated: false, isInitialized: true, user: null })
     )
   })
 })

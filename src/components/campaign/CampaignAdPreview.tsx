@@ -9,29 +9,95 @@
  * Purely presentational — no network calls or side effects beyond the object URL
  * lifecycle for the uploaded asset file.
  */
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
+import Hls from 'hls.js'
 import Box from '@mui/material/Box'
+import IconButton from '@mui/material/IconButton'
 import Typography from '@mui/material/Typography'
 import FavoriteIcon from '@mui/icons-material/Favorite'
 import ShareIcon from '@mui/icons-material/Share'
 import SmartDisplayOutlinedIcon from '@mui/icons-material/SmartDisplayOutlined'
 import TextsmsOutlinedIcon from '@mui/icons-material/TextsmsOutlined'
+import VolumeOffIcon from '@mui/icons-material/VolumeOff'
+import VolumeUpIcon from '@mui/icons-material/VolumeUp'
 import type { CampaignDraft } from '../../types/campaign'
 import ItineraryFeedAdPreview from './ItineraryFeedAdPreview'
 
 interface Props {
   draft: CampaignDraft
+  /**
+   * Pre-existing asset URL (e.g., a Firebase Storage URL on a persisted Campaign).
+   * Used as the preview image/video when no `assetFile` is present on the draft.
+   * For video_feed campaigns, prefer muxPlaybackUrl (HLS) over the raw Storage URL.
+   */
+  assetUrl?: string
+  /**
+   * Mux HLS playback URL — when present on a video_feed campaign, used instead
+   * of `assetUrl` to ensure cross-platform/cross-browser video playback.
+   */
+  muxPlaybackUrl?: string
+  /**
+   * Maximum width of the phone-frame preview in px. Defaults to 200 (wizard step).
+   * Pass a larger value (e.g. 320–360) for admin review or edit-step contexts.
+   */
+  maxWidth?: number
 }
 
 // ─── Video Feed (portrait phone frame) ───────────────────────────────────────
 
-const VideoFeedPreview: React.FC<{ imageUrl: string | null; primaryText: string; cta: string }> = ({
+const VideoFeedPreview: React.FC<{
+  imageUrl: string | null
+  primaryText: string
+  cta: string
+  maxWidth?: number
+}> = ({
   imageUrl,
   primaryText,
   cta,
-}) => (
+  maxWidth = 200,
+}) => {
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const [isMuted, setIsMuted] = useState(true)
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video || !imageUrl) return
+
+    const isHls = imageUrl.endsWith('.m3u8') || imageUrl.includes('.m3u8?')
+
+    if (isHls) {
+      if (Hls.isSupported()) {
+        const hls = new Hls()
+        hls.loadSource(imageUrl)
+        hls.attachMedia(video)
+        video.muted = true
+        video.loop = true
+        video.play().catch(() => {})
+        return () => hls.destroy()
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        // Safari — native HLS support
+        video.src = imageUrl
+        video.muted = true
+        video.loop = true
+        video.play().catch(() => {})
+      }
+    } else {
+      video.src = imageUrl
+      video.muted = true
+      video.loop = true
+      video.play().catch(() => {})
+    }
+  }, [imageUrl])
+
+  // Sync muted state to the video element imperatively (React's muted attr
+  // doesn't always update after mount).
+  useEffect(() => {
+    if (videoRef.current) videoRef.current.muted = isMuted
+  }, [isMuted])
+
+  return (
   <Box
-    sx={{ maxWidth: 200, mx: 'auto', width: '100%' }}
+    sx={{ maxWidth, mx: 'auto', width: '100%' }}
     role="img"
     aria-label="Ad preview — how your ad will appear in the video feed"
   >
@@ -58,10 +124,9 @@ const VideoFeedPreview: React.FC<{ imageUrl: string | null; primaryText: string;
       {imageUrl ? (
         <Box
           component="video"
-          src={imageUrl}
+          ref={videoRef}
           muted
           loop
-          autoPlay
           playsInline
           aria-label="Ad creative"
           sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
@@ -79,6 +144,26 @@ const VideoFeedPreview: React.FC<{ imageUrl: string | null; primaryText: string;
             Upload a video or image
           </Typography>
         </Box>
+      )}
+
+      {/* Mute / unmute toggle — top-left, visible only when a video is loaded */}
+      {imageUrl && (
+        <IconButton
+          size="small"
+          onClick={() => setIsMuted((m) => !m)}
+          aria-label={isMuted ? 'Unmute video' : 'Mute video'}
+          sx={{
+            position: 'absolute', top: 8, left: 8,
+            bgcolor: 'rgba(0,0,0,0.45)',
+            color: '#fff',
+            '&:hover': { bgcolor: 'rgba(0,0,0,0.65)' },
+            p: '4px',
+          }}
+        >
+          {isMuted
+            ? <VolumeOffIcon sx={{ fontSize: 16 }} />
+            : <VolumeUpIcon sx={{ fontSize: 16 }} />}
+        </IconButton>
       )}
 
       {/* Right-rail action icons — like TikTok */}
@@ -147,7 +232,8 @@ const VideoFeedPreview: React.FC<{ imageUrl: string | null; primaryText: string;
       </Box>
     </Box>
   </Box>
-)
+  )
+}
 
 // ─── AI Slot (image on top, text card below) ─────────────────────────────────
 
@@ -306,15 +392,21 @@ const AiSlotPreview: React.FC<AiSlotPreviewProps> = ({
 
 // ─── Main export ─────────────────────────────────────────────────────────────
 
-const CampaignAdPreview: React.FC<Props> = ({ draft }) => {
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+const CampaignAdPreview: React.FC<Props> = ({ draft, assetUrl: persistedUrl, muxPlaybackUrl, maxWidth = 200 }) => {
+  const [previewUrl, setPreviewUrl] = useState<string | null>(
+    // Prefer Mux HLS URL for video_feed previews when available
+    muxPlaybackUrl ?? persistedUrl ?? null
+  )
 
   useEffect(() => {
-    if (!draft.assetFile) { setPreviewUrl(null); return }
+    if (!draft.assetFile) {
+      setPreviewUrl(muxPlaybackUrl ?? persistedUrl ?? null)
+      return
+    }
     const url = URL.createObjectURL(draft.assetFile)
     setPreviewUrl(url)
     return () => URL.revokeObjectURL(url)
-  }, [draft.assetFile])
+  }, [draft.assetFile, persistedUrl, muxPlaybackUrl])
 
   if (draft.placement === 'itinerary_feed') {
     return (
@@ -328,7 +420,7 @@ const CampaignAdPreview: React.FC<Props> = ({ draft }) => {
   }
 
   if (draft.placement === 'video_feed') {
-    return <VideoFeedPreview imageUrl={previewUrl} primaryText={draft.primaryText} cta={draft.cta} />
+    return <VideoFeedPreview imageUrl={previewUrl} primaryText={draft.primaryText} cta={draft.cta} maxWidth={maxWidth} />
   }
 
   return (

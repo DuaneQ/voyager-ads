@@ -21,6 +21,10 @@ import CampaignAdPreview from './CampaignAdPreview'
 interface Props {
   draft: CampaignDraft
   patch: <K extends keyof CampaignDraft>(key: K, value: CampaignDraft[K]) => void
+  /** Pre-existing asset URL — passed when editing a campaign that already has a saved creative. */
+  assetUrl?: string
+  /** Mux HLS URL — when present, preferred over assetUrl for video previews. */
+  muxPlaybackUrl?: string
 }
 
 interface RowProps {
@@ -84,7 +88,7 @@ const PLACEMENT_COLORS: Record<string, 'primary' | 'secondary' | 'success'> = {
   ai_slot: 'success',
 }
 
-const StepReview: React.FC<Props> = ({ draft, patch }) => {
+const StepReview: React.FC<Props> = ({ draft, patch, assetUrl, muxPlaybackUrl }) => {
   const [policyOpen, setPolicyOpen] = useState(false)
   const interestChips = draft.interests
     ? draft.interests.split(',').map(s => s.trim()).filter(Boolean)
@@ -96,7 +100,7 @@ const StepReview: React.FC<Props> = ({ draft, patch }) => {
       {/* Ad preview */}
       <SectionCard icon={<PreviewOutlinedIcon fontSize="small" />} title="Ad Preview" accentColor="#0891b2">
         <Box sx={{ py: 1 }}>
-          <CampaignAdPreview draft={draft} />
+          <CampaignAdPreview draft={draft} assetUrl={assetUrl} muxPlaybackUrl={muxPlaybackUrl} maxWidth={280} />
         </Box>
       </SectionCard>
 

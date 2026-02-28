@@ -1,14 +1,9 @@
 import React from 'react'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import CampaignTable from '../../../components/dashboard/CampaignTable'
 import type { Campaign } from '../../../types/campaign'
-
-// SparkLineChart renders SVG — keep tests fast and focused on table content
-vi.mock('@mui/x-charts/SparkLineChart', () => ({
-  SparkLineChart: () => <svg data-testid="sparkline" />,
-}))
 
 const base: Campaign = {
   id: 'c1',
@@ -105,13 +100,41 @@ describe('CampaignTable', () => {
     expect(screen.getByText('Under review')).toBeInTheDocument()
   })
 
-  it('renders a sparkline for each campaign', () => {
-    renderTable([base, { ...base, id: 'c2', name: 'B' }])
-    expect(screen.getAllByTestId('sparkline')).toHaveLength(2)
-  })
-
   it('shows dash for missing date range', () => {
     renderTable([{ ...base, startDate: '', endDate: '' }])
-    expect(screen.getByText('—')).toBeInTheDocument()
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0)
+  })
+
+  // ── Metrics columns: totalImpressions / totalClicks / CTR ─────────────────
+
+  it('shows dashes for all metric columns when counters are absent', () => {
+    renderTable([base]) // no totalImpressions/totalClicks
+    // There should be at least 3 dash cells (Impressions, Clicks, CTR)
+    const dashes = screen.getAllByText('—')
+    expect(dashes.length).toBeGreaterThanOrEqual(3)
+  })
+
+  it('displays formatted impressions and clicks from counters', () => {
+    renderTable([{ ...base, isUnderReview: false, status: 'active', totalImpressions: 145637, totalClicks: 1602 }])
+    expect(screen.getByText('145,637')).toBeInTheDocument()
+    expect(screen.getByText('1,602')).toBeInTheDocument()
+  })
+
+  it('computes and displays CTR correctly', () => {
+    renderTable([{ ...base, isUnderReview: false, status: 'active', totalImpressions: 10000, totalClicks: 250 }])
+    expect(screen.getByText('2.50%')).toBeInTheDocument()
+  })
+
+  it('shows dash for CTR when impressions is zero', () => {
+    renderTable([{ ...base, isUnderReview: false, status: 'active', totalImpressions: 0, totalClicks: 0 }])
+    // Zero impressions → CTR would be 0/0 → dash
+    const dashes = screen.getAllByText('—')
+    expect(dashes.length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('links campaign name to the detail page', () => {
+    renderTable([base])
+    const link = screen.getByRole('link', { name: /Summer Vibes/i })
+    expect(link).toHaveAttribute('href', '/campaigns/c1')
   })
 })
