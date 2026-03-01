@@ -15,8 +15,9 @@ vi.mock('../../../store/authStore', () => ({
   default: (selector: (s: typeof mockAuthState) => unknown) => selector(mockAuthState),
 }))
 
-// VITE_ADMIN_UID is read via import.meta.env in AdminRoute
+// VITE_ADMIN_UIDS is a comma-separated list read via import.meta.env in AdminRoute
 const ADMIN_UID = 'admin-uid-999'
+const ADMIN_UID_2 = 'admin-uid-888'
 
 function renderRoute(children: React.ReactNode = <div data-testid="protected">Admin Panel</div>) {
   return render(
@@ -29,7 +30,7 @@ function renderRoute(children: React.ReactNode = <div data-testid="protected">Ad
 describe('AdminRoute', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.stubEnv('VITE_ADMIN_UID', ADMIN_UID)
+    vi.stubEnv('VITE_ADMIN_UIDS', `${ADMIN_UID},${ADMIN_UID_2}`)
   })
 
   it('renders null while auth is not initialized', () => {
@@ -46,24 +47,31 @@ describe('AdminRoute', () => {
     expect(screen.queryByTestId('protected')).not.toBeInTheDocument()
   })
 
-  it('redirects when user UID does not match VITE_ADMIN_UID', () => {
+  it('redirects when user UID is not in VITE_ADMIN_UIDS', () => {
     mockAuthState.isInitialized = true
     mockAuthState.user = { uid: 'regular-user-123' }
     renderRoute()
     expect(screen.queryByTestId('protected')).not.toBeInTheDocument()
   })
 
-  it('renders children when user UID matches VITE_ADMIN_UID', () => {
+  it('renders children when user UID matches first admin UID', () => {
     mockAuthState.isInitialized = true
     mockAuthState.user = { uid: ADMIN_UID }
     renderRoute()
     expect(screen.getByTestId('protected')).toBeInTheDocument()
   })
 
-  it('redirects when VITE_ADMIN_UID is not set', () => {
+  it('renders children when user UID matches second admin UID', () => {
+    mockAuthState.isInitialized = true
+    mockAuthState.user = { uid: ADMIN_UID_2 }
+    renderRoute()
+    expect(screen.getByTestId('protected')).toBeInTheDocument()
+  })
+
+  it('redirects when VITE_ADMIN_UIDS is not set', () => {
     mockAuthState.isInitialized = true
     mockAuthState.user = { uid: 'some-uid' }
-    vi.stubEnv('VITE_ADMIN_UID', '')
+    vi.stubEnv('VITE_ADMIN_UIDS', '')
     renderRoute()
     expect(screen.queryByTestId('protected')).not.toBeInTheDocument()
   })
