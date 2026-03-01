@@ -56,7 +56,7 @@ jobs:
         env:
           VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
           VITE_E2E_AUTH_BYPASS: 'true'
-          VITE_ADMIN_UID: ${{ secrets.VITE_ADMIN_UID_DEV }}
+          VITE_ADMIN_UIDS: ${{ secrets.VITE_ADMIN_UIDS_DEV }}
 
       - name: Deploy preview to Firebase Hosting (travalpass-ads-dev)
         uses: FirebaseExtended/action-hosting-deploy@v0
@@ -109,7 +109,7 @@ jobs:
         run: npm run build
         env:
           VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
-          VITE_ADMIN_UID: ${{ secrets.VITE_ADMIN_UID_DEV }}
+          VITE_ADMIN_UIDS: ${{ secrets.VITE_ADMIN_UIDS_DEV }}
 
       - name: Deploy to Firebase Hosting dev live (travalpass-ads-dev)
         uses: FirebaseExtended/action-hosting-deploy@v0
@@ -142,7 +142,7 @@ jobs:
         run: npm run build
         env:
           VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
-          VITE_ADMIN_UID: ${{ secrets.VITE_ADMIN_UID_PROD }}
+          VITE_ADMIN_UIDS: ${{ secrets.VITE_ADMIN_UIDS_PROD }}
 
       - name: Deploy to Firebase Hosting production (travalpass-ads)
         uses: FirebaseExtended/action-hosting-deploy@v0

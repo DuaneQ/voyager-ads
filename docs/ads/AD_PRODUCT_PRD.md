@@ -1,42 +1,48 @@
 % TravalPass Ads — PRD (MVP)
 
-Status: Draft
+**Status: In Progress**  
+**Last updated: 2026-02-07**
 
-Purpose
+> ⚠️ This file currently contains two draft versions merged together (see note below §3). For clean implementation status, see [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md). For annotated engineering requirements, see [ADS_REQUIREMENTS.md](ADS_REQUIREMENTS.md).
+>
+> Legend: ✅ Implemented · 🔄 Partial · ❌ Not started
+
+Purpose ✅ (advertiser PWA) / ❌ (consumer delivery)
 - Create a simple, self‑serve advertising product for local businesses and travel brands that delivers ads into:
-  - Video Feed (video/image creatives)
-  - Itinerary feed (promoted itinerary cards)
-  - Promotion slots in AI Itinerary and Add Itinerary flows
+  - Video Feed (video/image creatives) — ✅ preview in advertiser PWA; ❌ not yet in consumer apps
+  - Itinerary feed (promoted itinerary cards) — ❌ not implemented
+  - Promotion slots in AI Itinerary and Add Itinerary flows — ❌ not implemented
 
-High‑level goals
-- Monetize with low operational overhead and predictable pricing for advertisers.
-- Preserve user experience and privacy; allow opt‑out and user flagging.
-- Reuse existing repo infrastructure (video upload, feeds, Cloud Functions, Stripe).
+High‑level goals 🔄
+- ✅ Monetize with low operational overhead and predictable pricing — Stripe prepay active, CPM/CPC wizard built.
+- 🔄 Preserve user experience and privacy — opt-out and flagging not yet built.
+- ✅ Reuse existing repo infrastructure — Cloud Functions, Stripe, Cloud Storage all reused.
 
-Monetization model (MVP)
-- Supported models: CPM (primary) and CPC (optional). No auction bidding.
-- CPM: charge per 1,000 impressions for brand/awareness placements (video feed, itinerary feed).
-- CPC: optional performance option for campaigns that want pay‑per‑click (book/visit) billing.
-- CPA: deferred — implement later when conversion tracking and cost model are clear.
+Monetization model (MVP) 🔄
+- ✅ Supported models: CPM (primary) and CPC (optional). No auction bidding.
+- ✅ CPM and CPC selection in campaign wizard.
+- ❌ CPA: deferred.
+- ❌ Spend tracking (spentCents decrement) not yet implemented — depends on event ingestion.
 
-Metrics (must capture)
-- Impressions: each time an ad creative is rendered in a viewable position.
-- Clicks: user clicks/taps the ad CTA or creative.
-- CTR (click through rate): clicks / impressions (simple quality indicator).
-- Spend: money charged to advertiser (by CPM or CPC).
-- eCPM: (revenue / impressions) * 1000.
-- Video metrics: play starts, watch time, video completion rates (VCR) at 25/50/100%.
-- Unique reach and frequency, platform (iOS/Android/web), geo breakdown.
+Metrics (must capture) ❌ (event ingestion not yet built)
+- ❌ Impressions: event ingestion not implemented.
+- ❌ Clicks: event ingestion not implemented.
+- ❌ CTR, Spend, eCPM: derived from events — not available.
+- ❌ Video metrics (VCR 25/50/100%): not logged.
+- ✅ Reporting UI shell exists in CampaignDetailPage (placeholder until real events flow).
+- ✅ MetricsChart and KPI chips built.
 
-Targeting
-- Dimensions to support in MVP:
-  - Location (country / region / city / radius)
-  - Itinerary destination matching (match campaign city → itinerary.destination)
-  - Travel dates (match `startDay`/`endDay` ranges)
-  - Demographics from profile (age, gender) — only with user consent
-  - Behavioural signals (video engagement thresholds, recent searches)
+Targeting 🔄
+- ✅ Location (country / region / city / radius) — wizard step built
+- ✅ Itinerary destination matching — wizard step built
+- ✅ Travel dates — wizard step built
+- 🔄 Demographics from profile (age, gender) — UI built; consent gating not enforced
+- ❌ Behavioural signals — no delivery layer
 
-Creative specifications (industry‑standard, FB/Google/TikTok parity)
+Creative specifications ✅
+- ✅ Upload + validation in StepCreative
+- ✅ Mux transcodes video to HLS; CampaignAdPreview plays back via hls.js / native HLS / raw fallback
+- ✅ Phone-frame preview with mute toggle in wizard, admin review, and campaign detail page
 - Image ads
   - Formats: JPG, PNG
   % TravalPass Ads — PRD (MVP)
@@ -132,9 +138,13 @@ Creative specifications (industry‑standard, FB/Google/TikTok parity)
   - Created: 2026-02-07
   - Consolidated: 2026-02-07
 
-Cloud Storage + CDN for creatives
+---
+> ⚠️ **Duplicate draft note:** The section below (§4–§17) is a second draft that was merged into this file. It contains the same requirements more formally structured. For the authoritative implementation status of each section, see [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) and [ADS_REQUIREMENTS.md](ADS_REQUIREMENTS.md). TODO: consolidate into a single version.
+---
 
-Stripe for payments (prepay only)
+Cloud Storage + CDN for creatives ✅ (Cloud Storage; Mux CDN for video HLS)
+
+Stripe for payments (prepay only) ✅
 
 4. Ad Placements (MVP)
 Supported Placements
@@ -413,12 +423,32 @@ Pilot advertisers active
 
 17. Final Decisions (Locked)
 
-✅ Web dashboard only
+✅ Web dashboard only (ads.travalpass.com)
 
 ✅ CPM + guarded CPC
 
-✅ Prepay billing
+✅ Prepay billing (Stripe credits)
 
 ❌ No auction
 
 ❌ No CPA in MVP
+
+---
+
+## Implementation Summary (added 2026-02-07)
+
+| Component | Status |
+|-----------|--------|
+| Advertiser PWA (5-step wizard, dashboard, detail page) | ✅ |
+| Creative upload (image + video) to Cloud Storage | ✅ |
+| Mux video transcode pipeline (CF + webhook) | ✅ |
+| HLS playback in phone-frame preview | ✅ |
+| Admin review with video preview | ✅ |
+| Stripe prepay checkout + portal | ✅ |
+| Ad selection endpoint (`selectAd`) | ❌ |
+| Impression / click event ingestion | ❌ |
+| Consumer app ad rendering | ❌ |
+| Frequency caps + budget pacing | ❌ |
+| User flagging + privacy UI | ❌ |
+
+See [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) for full technical detail.
