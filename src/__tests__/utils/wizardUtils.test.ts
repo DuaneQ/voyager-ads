@@ -17,6 +17,7 @@ const BASE_DRAFT: CampaignDraft = {
   startDate: tomorrow,
   endDate: '',
   creativeName: 'Beach Hero',
+  landingUrl: 'https://example.com',
   audienceName: 'Global Travelers',
   location: 'Paris, France',
   targetDestination: '',
@@ -70,7 +71,20 @@ describe('wizardUtils', () => {
       expect(isStepValid(1, { ...BASE_DRAFT, creativeName: '   ' })).toBe(false)
     })
 
-    it('returns true when creativeName has content', () => {
+    it('returns false when landingUrl is empty', () => {
+      expect(isStepValid(1, { ...BASE_DRAFT, landingUrl: '' })).toBe(false)
+    })
+
+    it('returns false when landingUrl is missing the https:// scheme', () => {
+      expect(isStepValid(1, { ...BASE_DRAFT, landingUrl: 'example.com' })).toBe(false)
+    })
+
+    it('returns false when landingUrl uses http:// scheme', () => {
+      // http is allowed (mirrors the regex)
+      expect(isStepValid(1, { ...BASE_DRAFT, landingUrl: 'http://example.com' })).toBe(true)
+    })
+
+    it('returns true when creativeName has content and landingUrl has https:// scheme', () => {
       expect(isStepValid(1, BASE_DRAFT)).toBe(true)
     })
   })

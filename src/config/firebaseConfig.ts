@@ -1,6 +1,6 @@
 import { initializeApp, getApps } from 'firebase/app'
 import { getAuth, indexedDBLocalPersistence, initializeAuth, browserPopupRedirectResolver } from 'firebase/auth'
-import { getFirestore } from 'firebase/firestore'
+import { initializeFirestore, persistentLocalCache, getFirestore } from 'firebase/firestore'
 import { getStorage } from 'firebase/storage'
 import { getFunctions } from 'firebase/functions'
 
@@ -49,7 +49,20 @@ try {
   auth = getAuth(app)
 }
 
-const db = getFirestore(app)
+// experimentalAutoDetectLongPolling: Safari blocks Firestore's default gRPC-Web
+// streaming transport with a CORS error. Enabling auto-detection causes Firestore
+// to probe and fall back to long-polling in Safari/WebKit without any error.
+// Chrome and Firefox continue using the faster streaming transport unaffected.
+let db: ReturnType<typeof getFirestore>
+try {
+  db = initializeFirestore(app, {
+    experimentalAutoDetectLongPolling: true,
+    localCache: persistentLocalCache(),
+  })
+} catch {
+  // initializeFirestore throws on HMR / re-initialisation — get the existing instance.
+  db = getFirestore(app)
+}
 const storage = getStorage(app)
 const functions = getFunctions(app, 'us-central1')
 

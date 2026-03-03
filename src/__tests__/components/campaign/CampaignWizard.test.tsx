@@ -118,8 +118,9 @@ describe('CampaignWizard', () => {
     fireEvent.change(screen.getByLabelText(/Campaign start date/i), { target: { value: '2030-06-01' } })
     fireEvent.click(screen.getByRole('button', { name: /Next/i }))
 
-    // Step 1: creative name
+    // Step 1: creative name + landing URL (both required)
     fireEvent.change(screen.getByLabelText(/Creative name/i), { target: { value: 'Banner' } })
+    fireEvent.change(screen.getByLabelText(/Landing URL/i), { target: { value: 'https://example.com' } })
     fireEvent.click(screen.getByRole('button', { name: /Next/i }))
 
     // Step 2: audience name + location (video_feed default)
@@ -141,8 +142,12 @@ describe('CampaignWizard', () => {
     fireEvent.change(screen.getByLabelText(/Campaign name/i), { target: { value: 'Ad Campaign' } })
     fireEvent.change(screen.getByLabelText(/Campaign start date/i), { target: { value: '2030-06-01' } })
     fireEvent.click(screen.getByRole('button', { name: /Next/i }))
+
+    // Step 1: creative name + landing URL
     fireEvent.change(screen.getByLabelText(/Creative name/i), { target: { value: 'Banner' } })
+    fireEvent.change(screen.getByLabelText(/Landing URL/i), { target: { value: 'https://example.com' } })
     fireEvent.click(screen.getByRole('button', { name: /Next/i }))
+
     fireEvent.change(screen.getByLabelText(/Audience name/i), { target: { value: 'Travelers' } })
     fireEvent.change(screen.getByLabelText(/Location/i), { target: { value: 'Paris' } })
     fireEvent.click(screen.getByRole('button', { name: /Next/i }))
