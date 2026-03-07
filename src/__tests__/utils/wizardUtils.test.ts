@@ -94,8 +94,8 @@ describe('wizardUtils', () => {
       expect(isStepValid(2, { ...BASE_DRAFT, audienceName: '' })).toBe(false)
     })
 
-    it('returns false for video_feed when location is empty', () => {
-      expect(isStepValid(2, { ...BASE_DRAFT, placement: 'video_feed', location: '' })).toBe(false)
+    it('returns true for video_feed when location is empty (any destination)', () => {
+      expect(isStepValid(2, { ...BASE_DRAFT, placement: 'video_feed', location: '' })).toBe(true)
     })
 
     it('returns true for video_feed when location is set', () => {

@@ -12,6 +12,11 @@
 // | Video feed           | CPM   | $22            |
 // | Itinerary feed       | CPM   | $25            |
 // | Promoted itineraries | CPC   | $2.25          |
+//
+// CPC impression floor: all CPC campaigns are charged a $0.50 / 1,000 impression
+// floor in addition to the per-click charge. This prevents indefinite free
+// brand-awareness delivery when click-through rate is zero.
+export const CPC_IMPRESSION_FLOOR_CPM = 0.50 // $0.50 per 1,000 impressions
 
 /** Billing models supported across all placements. */
 export type PricingModel = 'CPC' | 'CPM' | 'CPV'
@@ -23,7 +28,7 @@ export const PRICING_SIMPLE = [
     models: ['CPC', 'CPM'],
     CPC: [0.3, 1.5],
     CPM: [6, 18],
-    price: { CPM: 25 },
+    price: { CPM: 25, CPC: 0.50 },
     description: 'Best for direct-response placements (bookings, leads) served in itinerary and discovery contexts.',
   },
   {

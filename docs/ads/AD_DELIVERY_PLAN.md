@@ -1,7 +1,7 @@
 # Consumer-Side Ad Delivery — Implementation Plan
 
-**Date:** March 1, 2026  
-**Status:** Awaiting Approval  
+**Date:** March 2, 2026  
+**Status:** ✅ Implemented — Deployed to `mundo1-dev`; production deployment pending  
 **Related Docs:** [ADS_REQUIREMENTS.md](./ADS_REQUIREMENTS.md) | [AD_PRODUCT_PRD.md](./AD_PRODUCT_PRD.md) | [IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md)
 
 ---
@@ -650,7 +650,244 @@ Two targeting audits were performed after the initial implementation to identify
 | CF unit tests (`selectAds`) | 72 | ✅ All pass |
 | CF unit tests (`logAdEvents`) | 50 | ✅ All pass |
 | RN ad unit tests | 64 | ✅ All pass |
-| RN full test suite | 2,383 | ✅ All pass (143 suites) |
-| Ads portal tests | 623 | ✅ All pass (58 suites) |
+| RN full test suite | 2,386 | ✅ All pass (143 suites) |
+| Ads portal tests | 626 | ✅ All pass (58 suites) |
 | Live integration tests (`selectAds`) | 14 | ✅ All pass (includes 2 new location tests) |
 | Live integration tests (`logAdEvents`) | 14 | ✅ All pass |
+
+---
+
+## 14. Production Debugging Session — 2026-03-02
+
+After initial deployment to `mundo1-dev`, four issues were identified through testing and Cloud Function logs and resolved in this session.
+
+### Issue 1 — `processAdVideoWithMux` HTTP 500 Unauthorized
+
+**Symptom:** New campaign video uploaded via advertiser PWA caused a 500 error: `Error: Unauthorized: caller does not own this campaign`.
+
+**Root cause:** The ownership check in `processAdVideoWithMux` compared `campaignSnap.data()?.advertiserId !== request.auth.uid`, but Firestore stores the campaign owner under the `uid` field (not `advertiserId`).
+
+**Fix applied to `voyager-pwa/functions/src/muxVideoProcessing.ts`:**
+```ts
+// Before
+if (campaignSnap.data()?.advertiserId !== request.auth.uid)
+
+// After
+if (campaignSnap.data()?.uid !== request.auth.uid)
+```
+
+**Deployed to `mundo1-dev` ✅**
+
+---
+
+### Issue 2 — Mux signed URL failing on dev (wrong Cloud Storage bucket)
+
+**Symptom:** After the ownership fix, Mux asset creation still failed on dev with a bucket access error.
+
+**Root cause:** `processAdVideoWithMux` used `admin.storage().bucket("mundo1-1.appspot.com")` — the hardcoded production bucket name. The dev environment's default bucket has a different name, so signed URL generation failed.
+
+**Fix applied to `voyager-pwa/functions/src/muxVideoProcessing.ts`:**
+```ts
+// Before
+const bucket = admin.storage().bucket("mundo1-1.appspot.com");
+
+// After
+const bucket = admin.storage().bucket();  // uses project's default bucket in any env
+```
+
+**Deployed to `mundo1-dev` ✅**  
+**Verified end-to-end:** Cloud logs confirmed `video.asset.created` → `video.asset.ready` → `Updated ads_campaigns/{id} with playback URL`. App confirmed playing new "Winter Beach Escape" campaign via `https://stream.mux.com/*.m3u8`.
+
+---
+
+### Issue 3 — Ad slot appearing at 6th position instead of 5th
+
+**Symptom:** User confirmed the ad was showing at mixed-feed index 5 (the 6th slot) instead of 4 (the 5th slot).
+
+**Root cause:** `FIRST_AD_AFTER = 4` placed the first ad after 4+1 = 5 content items, putting it at mixed-feed index 5.
+
+**Fix applied to `voyager-RN/src/hooks/ads/useAdFrequency.ts`:**
+```ts
+// Before
+const FIRST_AD_AFTER = 4
+
+// After
+const FIRST_AD_AFTER = 3
+```
+
+**Effect:** Feed layout is now:
+```
+content[0] content[1] content[2] content[3] AD content[4] content[5] content[6] content[7] content[8] AD ...
+index:  0            1            2            3            4   5            6            7            8            9            10
+```
+
+All 17 `useAdFrequency` tests updated and passing.
+
+---
+
+### Issue 4 — Web app sending incomplete user context to `selectAds` (only `{gender, age}`)
+
+**Symptom:** Browser DevTools showed `[AdDelivery] fetching` logged with only `{gender, age}` — missing `activityPreferences` and `travelStyles`.
+
+**Root cause:** On **web only**, Firebase Auth restores the session from indexedDB **asynchronously** (unlike iOS/Android where it restores synchronously from secure storage before first render). On cold page load: `currentUser === null` on first render → `useTravelPreferences` returns early (`userId` is null) → `travelProfile` stays `null`. The `lastAdContextKeyRef` dedup key then locks in `"gender:age"` when `userProfile` becomes available, and ignores the subsequent resolution of `travelProfile`.
+
+**Fix applied to `voyager-RN/src/pages/VideoFeedPage.tsx`:**
+1. Exposed `loading` state from `useTravelPreferences`
+2. Added `travelProfileLoading` to `buildAdContext` `useCallback` dependency array
+3. Added `useEffect` with `prevTravelLoadingRef` that resets `lastAdContextKeyRef.current = ''` when `loading` transitions `true → false`, forcing a fresh context evaluation
+
+```tsx
+const { defaultProfile: travelProfile, loading: travelProfileLoading } = useTravelPreferences();
+
+const prevTravelLoadingRef = useRef(true);
+useEffect(() => {
+  if (prevTravelLoadingRef.current && !travelProfileLoading) {
+    lastAdContextKeyRef.current = '';
+  }
+  prevTravelLoadingRef.current = travelProfileLoading;
+}, [travelProfileLoading]);
+```
+
+**Status:** Code-complete, TS clean, 4/4 `VideoFeedPage` tests passing. **Pending app bundle deploy.**  
+**Note:** `VideoFeedPage.android.tsx` has the same pattern and should receive the same fix before Android ships.
+
+---
+
+## 15. Manual Testing Plan
+
+> **Resumed:** 2026-03-03  
+> **Environment:** `mundo1-dev` Firebase project  
+> **Test device(s):** iOS Simulator (primary), Android Emulator, Web (`localhost:8082`)
+
+---
+
+### Assumptions Going In
+
+| Assumption | Confidence | Impact If Wrong |
+|---|---|---|
+| `selectAds` + `logAdEvents` deployed to `mundo1-dev` | High — deployed 2026-03-02 | Ads won't appear at all |
+| `processAdVideoWithMux` ownership + bucket fixes deployed to `mundo1-dev` | High — verified 2026-03-02 | New video uploads will 500 |
+| Campaign `SjgNVINC66OUEHjIAqev` is `status: active` with `budgetCents: 4999` | High — Firestore confirmed 2026-03-02 | No active test ad available |
+| `budgetCents: 4999` means billing pipeline is working (1 impression logged → `Math.round(1 × 500 / 1000)` = 1 cent charged) | High — confirmed by CPM formula | — |
+| Web travelProfile race condition fix is **NOT yet deployed** as app bundle | High — bundle not rebuilt | Web will send incomplete context `{gender, age}` only |
+| `useTravelPreferences` returns full profile on iOS/Android (no race) | High — native Auth restores sync | iOS/Android targeting is complete today; web is incomplete |
+| `budgetType: "daily"` has **no automatic daily reset** in `logAdEvents` | High — verified in source | Daily budget campaigns behave as lifetime for now — must be noted in results |
+| `FIRST_AD_AFTER = 3`, `AD_INTERVAL = 5` → first ad at mixed-feed index 4 | High — unit tests confirm | Wrong ad position |
+
+---
+
+### Cloud Functions to Verify During Testing
+
+| Function | What to Watch in Cloud Logs | Expected Result |
+|---|---|---|
+| `selectAds` | Log line: `[selectAds]` with placement, campaign count, scores | Returns top-N ranked campaigns; score descending |
+| `logAdEvents` | Log line: `[logAdEvents]` per campaign, processed count, budget deduction | `daily_metrics` updated; `budgetCents` decremented |
+| `logAdEvents` — budget exhaustion | `[logAdEvents] Campaign X budget exhausted — paused.` | Campaign `status` flips to `paused` in Firestore |
+| `processAdVideoWithMux` | `[Mux]` asset created, `muxStatus: preparing → ready` | Video plays via HLS in feed |
+| — Negative: no spam | No repeated `selectAds` calls within same context key | Dedup guard working |
+
+**How to watch logs:**  
+```
+firebase functions:log --project mundo1-dev --only selectAds,logAdEvents
+```
+
+---
+
+### Test Scenarios & TODO
+
+Mark each checkbox as it is verified. Record actual result in the **Result** column.
+
+#### 🟩 A. Ad Delivery — Positive Cases
+
+| # | Scenario | Steps | Expected | CF to Check | Result |
+|---|---|---|---|---|---|
+| A1 | Active ad is visible in video feed | Open Video Feed with ≥5 videos loaded | Ad card appears at position 5 (mixed-feed index 4) | `selectAds` — returns campaign | ☐ |
+| A2 | Ad appears at correct slot — index 4 | Count items in feed: items 0,1,2,3 are content; item 4 is ad | Item at index 4 has `type: 'ad'` | — | ☐ |
+| A3 | Ad repeats every 5 videos after first | Scroll past first ad; count to next | Second ad appears 5 content items later (index 10) | — | ☐ |
+| A4 | Video ad plays automatically (HLS) | Ad card renders in viewport | Mux HLS stream plays, muted, looping | — | ☐ |
+| A5 | "Sponsored" label visible | View ad card | Label is visible on ad | — | ☐ |
+| A6 | CTA button tap opens landing URL | Tap ad CTA | Browser opens `landingUrl` from Firestore | `logAdEvents` — click event | ☐ |
+| A7 | Impression logged after 1s | Scroll to ad, hold in view ≥1s | Firestore `daily_metrics/{today}.impressions` increments by 1 | `logAdEvents` — impression | ☐ |
+| A8 | `budgetCents` decremented after billing threshold | Log ≥1 impression | `budgetCents` decrements by `Math.round(N × 500 / 1000)` cents | `logAdEvents` | ☐ |
+| A9 | AI Itinerary slot shows ad | Open an AI Itinerary detail | Promotion slot renders a sponsored item | `selectAds` with `placement: ai_slot` | ☐ |
+
+---
+
+#### 🔴 B. Ad Filtering — Negative Cases (Ads That Must NOT Appear)
+
+| # | Scenario | Setup | Expected | CF to Check | Result |
+|---|---|---|---|---|---|
+| B1 | Paused campaign does not appear | Set a campaign `status: 'paused'` in Firestore | That campaign never selected | `selectAds` — filters `status == active` | ☐ |
+| B2 | Draft campaign does not appear | Set a campaign `status: 'draft'` | Not returned | `selectAds` | ☐ |
+| B3 | Campaign under review does not appear | Set `isUnderReview: true` on an active campaign | Not returned | `selectAds` — client-side filter | ☐ |
+| B4 | Expired campaign does not appear | Set `endDate` to yesterday (e.g. `2026-03-02`) | Not returned | `selectAds` — date range filter | ☐ |
+| B5 | Future campaign does not appear | Set `startDate` to tomorrow (e.g. `2026-03-04`) | Not returned | `selectAds` — date range filter | ☐ |
+| B6 | Budget-exhausted campaign does not appear | Manually set `budgetCents: 0` on a campaign | Not returned | `selectAds` — `budgetCents > 0` filter | ☐ |
+| B7 | Rejected campaign does not appear | Set `status: 'rejected'` | Not returned | `selectAds` | ☐ |
+
+> **Setup note:** To run B1–B7, temporarily edit a duplicate test campaign in Firestore. Do not modify `SjgNVINC66OUEHjIAqev`.
+
+---
+
+#### 🎯 C. Targeting & Ranking
+
+| # | Scenario | Setup | Expected | Result |
+|---|---|---|---|---|
+| C1 | Higher-score campaign ranks first | Create two active campaigns: one with `ageFrom/ageTo` matching the test user, one without. User profile has a known age. | Targeted campaign returns first in `selectAds` response (score +2 for age) | ☐ |
+| C2 | Destination match boosts rank | Campaign A has `location: "Cancun"`; Campaign B has no destination. Test user context has `destination: "Cancun"`. | Campaign A scores +2 higher than B | ☐ |
+| C3 | iOS/Android sends full targeting context | iOS Simulator: verify `[AdDelivery] fetching` DevTools/log includes `activityPreferences` and `travelStyles` | Full context sent (no race condition on native) | ☐ |
+| C4 | Web sends INCOMPLETE context (pre-fix) | Web: check `[AdDelivery] fetching` log after app bundle deployed without race fix | Only `{gender, age}` sent — confirms race condition | ☐ |
+| C5 | Web sends full context AFTER race fix deploy | Rebuild web bundle with `VideoFeedPage.tsx` fix, refresh | `activityPreferences` + `travelStyles` now present in log | ☐ |
+| C6 | Campaign with no targeting fields is eligible | Campaign with all targeting fields empty/`[]` | Still returned in `selectAds` (scores 0, but eligible) | ☐ |
+
+---
+
+#### 🔁 D. Frequency Cap & Deduplication
+
+| # | Scenario | Steps | Expected | Result |
+|---|---|---|---|---|
+| D1 | Same ad not re-fetched during session | Feed loads; note campaign ID shown. Scroll down and back up. | `selectAds` not called again for same context key — dedup key prevents re-fetch | ☐ |
+| D2 | Seen campaigns excluded from next fetch | Note `campaignId` of displayed ad. Force a context-key reset (change destination). | `seenCampaignIds` sent to `selectAds`; that campaign excluded from results | ☐ |
+| D3 | Frequency cap prevents over-serving | Trigger ad ≥ frequency cap times in 24h (check AsyncStorage cap value) | Campaign filtered out after cap reached; does not re-appear until next 24h window | ☐ |
+
+---
+
+#### ⚡ E. Billing & Budget
+
+| # | Scenario | Steps | Expected | Result |
+|---|---|---|---|---|
+| E1 | CPM billing: charge formula correct | Log 1 impression on CPM campaign | `budgetCents` decrements by `Math.round(1 × 500 / 1000)` = 1 cent | ☐ |
+| E2 | CPM billing: 1000 impressions = $5 | Log 1000 impressions on CPM campaign | `budgetCents` decrements by 500 cents ($5.00) | ☐ |
+| E3 | Budget exhaustion auto-pauses campaign | Manually set `budgetCents: 1`; trigger one more impression | `logAdEvents` sets `status: 'paused'`; Cloud log confirms `budget exhausted` | ☐ |
+| E4 | Paused campaign disappears immediately | After E3, reload feed | Campaign no longer returned by `selectAds` | ☐ |
+| E5 | Daily budget — no automatic reset (known gap) | Wait until next calendar day with a daily-budget campaign | `budgetCents` does NOT reset at midnight — this is a known design gap | ☐ |
+
+> **Known gap documented:** `budgetType: "daily"` exists in Firestore but `logAdEvents` only decrements a lifetime `budgetCents` counter. No daily reset is implemented. Must be addressed before production launch.
+
+---
+
+#### 🌐 F. Platform Coverage
+
+| # | Scenario | Platform | Expected | Result |
+|---|---|---|---|---|
+| F1 | Ad displays on iOS Simulator | iOS | Ad at index 4, HLS plays | ☐ |
+| F2 | Ad displays on Android Emulator | Android | Ad at index 4, HLS plays | ☐ |
+| F3 | Ad displays on Web (`localhost:8082`) | Web | Ad at index 4 (after race fix deploy) | ☐ |
+| F4 | Impression/click tracked on iOS | iOS | `logAdEvents` called; Firestore updated | ☐ |
+| F5 | Impression/click tracked on Web | Web | `logAdEvents` called; Firestore updated | ☐ |
+
+---
+
+### Questions to Resolve Before Full Testing
+
+1. **Do we have a second campaign** (different status/dates) ready in Firestore to test negative scenarios B1–B7 without touching `SjgNVINC66OUEHjIAqev`? If not, we should create one test campaign and set it to each state.
+2. **Web bundle:** Is the travelProfile race fix deployed? If yes, C4 is moot — skip straight to C5. If not, do C4 then deploy and re-run C5.
+3. **Which platform to start on?** Recommendation: iOS Simulator first (A1–A9), then billing tests (E1–E4), then negatives (B1–B7), then web (F3, F5, C4/C5).
+
+---
+
+### Observations From Firestore (2026-03-03)
+
+- `SjgNVINC66OUEHjIAqev` — `budgetCents: 4999` (started 5000) confirms billing pipeline is live: 1 cent was charged, consistent with `Math.round(1 × 500 / 1000) = 1` cent for the first impression logged after deployment.
+- `billingModel: "cpm"`, `budgetType: "daily"`, `ageFrom: "25"`, `ageTo: "44"`, `audienceName: "Beach & Leisure Travelers"` — targeting is set, will score +2 for age match on users 25–44.
+- Five campaigns visible in the left panel — we need to know the status of each to identify which are active vs not, for use in negative test scenarios.

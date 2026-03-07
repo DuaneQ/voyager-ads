@@ -1,8 +1,8 @@
 # TravalPass Ads — Implementation Status
 
-> Last updated: 2026-02-07  
+> Last updated: 2026-03-02  
 > Project: `voyager-ads` (React + TypeScript + Vite) + `voyager-RN` (Expo) + `voyager-pwa/functions` (Cloud Functions)  
-> Test suite: **622 tests passing** | TypeScript: **clean (0 errors)** on both projects
+> Test suite: **626 tests passing** (voyager-ads) · **2386 tests passing** (voyager-RN) | TypeScript: **clean (0 errors)** on all projects
 
 ---
 
@@ -100,12 +100,28 @@ voyager-RN (Expo — iOS + Android)
 | `processAdVideoWithMux` callable | ✅ Done | Creates Mux asset from storage signed URL; writes initial status |
 | `muxWebhook` routing for ads | ✅ Done | Routes `video.asset.ready` / `video.asset.errored` to `ads_campaigns` doc |
 | Mux fields on campaign doc | ✅ Done | `muxAssetId`, `muxPlaybackId`, `muxPlaybackUrl`, `muxThumbnailUrl`, `muxStatus`, `muxError`, `assetStoragePath` |
+| **Ownership check fix** | ✅ Fixed 2026-03-02 | Changed `advertiserId` → `uid` — Firestore stores the campaign owner as `uid`, not `advertiserId`. Was causing HTTP 500 `Unauthorized: caller does not own this campaign` for all new ad uploads. |
+| **Bucket fix** | ✅ Fixed 2026-03-02 | Changed `admin.storage().bucket("mundo1-1.appspot.com")` → `admin.storage().bucket()` — hardcoded prod bucket caused signed-URL failures on dev environment. Now uses the project's default bucket in both envs. |
+| **Deployed to `mundo1-dev`** | ✅ 2026-03-02 | Both fixes deployed. Pipeline verified end-to-end: `video.asset.created` → `video.asset.ready` → `Updated ads_campaigns/{id} with playback URL`. New "Winter Beach Escape" campaign confirmed playing via `https://stream.mux.com/*.m3u8`. |
 
-### ✅ voyager-RN (mobile)
+### ✅ voyager-RN (mobile) — Advertiser Tools
 
 | Area | Status | Notes |
 |------|--------|-------|
 | `waitForMuxProcessing` in `useVideoUpload` | ✅ Done | Single `onSnapshot` listener; self-cancels when status = `ready` or `errored`; 90-second hard timeout |
+
+### ✅ voyager-RN (mobile) — Consumer Ad Delivery
+
+| Area | Status | Notes |
+|------|--------|-------|
+| `selectAds` Cloud Function | ✅ Done | `voyager-pwa/functions/src/selectAds.ts` — queries `ads_campaigns` for active campaigns matching placement + dates + budget. Scores by targeting match (destination, gender, age, activity prefs, travel styles, trip types). Returns ranked `AdUnit[]`. |
+| `logAdEvents` Cloud Function | ✅ Done | `voyager-pwa/functions/src/logAdEvents.ts` — ingests batched impression/click events. Increments `daily_metrics/{YYYY-MM-DD}`, increments `totalImpressions`/`totalClicks` on campaign doc, decrements `budgetCents`. Auto-pauses campaign when budget exhausted. |
+| `useAdDelivery` hook | ✅ Done | `src/hooks/ads/useAdDelivery.ts` — calls `selectAds` on feed load with user context. Returns `AdUnit[]` for the given placement. Deduplicates fetches via context-key memoization. |
+| `useAdFrequency` hook | ✅ Done | `src/hooks/ads/useAdFrequency.ts` — `FIRST_AD_AFTER = 3`, `AD_INTERVAL = 5`. Produces mixed content+ad array; first ad appears at mixed-feed index 4 (5th slot overall), then every 5 content items. 24h AsyncStorage frequency cap per user×campaign. |
+| `useAdTracking` hook | ✅ Done | `src/hooks/ads/useAdTracking.ts` — 1s IAB viewability timer, buffers impression/click events in memory, flushes batch to `logAdEvents` every 30s or on unmount. Exposes `getSeenCampaignIds()` for cross-session deduplication. |
+| VideoFeedPage ad interleaving | ✅ Done | `src/pages/VideoFeedPage.tsx` — splices ads at index 4, 9, 14… in video feed. Renders `AdCard` component with `VideoAd` component wired to tracking hooks. |
+| AIItineraryDisplay promotions wiring | ✅ Done | Promotion slots in AI Itinerary detail wired to `useAdDelivery` for `ai_slot` placement. |
+| Web travelProfile race condition fix | ✅ Done 2026-03-02 | On web, Firebase Auth restores the session asynchronously — `currentUser` is null on first render, so `travelProfile` stays null and the dedup key locks in an incomplete `{gender, age}` context. Fix: exposes `loading` from `useTravelPreferences`, adds `travelProfileLoading` to `buildAdContext` deps, and resets `lastAdContextKeyRef` when loading transitions `true → false`. Code verified (TS clean, 4/4 tests pass). **Not yet deployed as app bundle.** |
 
 ---
 
@@ -117,9 +133,10 @@ voyager-RN (Expo — iOS + Android)
 
 The `processAdVideoWithMux` callable:
 1. Receives `{ campaignId, storagePath }` from the advertiser.
-2. Generates a short-lived signed URL for the Cloud Storage object.
-3. Creates a Mux asset via the Mux API, passing the signed URL as `input`.
-4. Writes `muxAssetId`, `muxStatus: 'preparing'` to `ads_campaigns/{campaignId}`.
+2. Verifies the caller owns the campaign by checking `campaignSnap.data().uid === request.auth.uid` (**Note:** the ownership field is `uid`, not `advertiserId` — bug fixed 2026-03-02).  
+3. Generates a short-lived signed URL for the project's **default** Cloud Storage bucket (`admin.storage().bucket()` — bucket fix 2026-03-02 removed a hardcoded prod bucket name that broke dev).
+4. Creates a Mux asset via the Mux API, passing the signed URL as `input`.
+5. Writes `muxAssetId`, `muxStatus: 'preparing'` to `ads_campaigns/{campaignId}`.
 
 The `muxWebhook` HTTP function:
 - Validates the Mux webhook signature.
@@ -317,18 +334,27 @@ src/
 
 ```
 src/
-└── muxVideoProcessing.ts   processAdVideoWithMux callable + muxWebhook HTTP fn
-lib/
-├── index.js               Function exports (includes processAdVideoWithMux, muxWebhook)
-├── muxVideoProcessing.js  Compiled output
-└── …
+├── muxVideoProcessing.ts   processAdVideoWithMux callable + muxWebhook HTTP fn
+├── selectAds.ts            selectAds onCall — ad selection + targeting score
+├── logAdEvents.ts          logAdEvents onCall — impression/click ingestion, budget decrement, auto-pause
+├── adTypes.ts              Shared types: AdUnit, SelectAdsRequest/Response, LogAdEventsRequest/Response
+└── index.ts                Function exports
 ```
 
 ### voyager-RN (relevant files)
 
 ```
-src/hooks/video/
-└── useVideoUpload.ts       waitForMuxProcessing helper
+src/
+├── hooks/
+│   ├── ads/
+│   │   ├── useAdDelivery.ts     calls selectAds, returns AdUnit[] per placement
+│   │   ├── useAdFrequency.ts    mixed-feed interleaving (FIRST_AD_AFTER=3, AD_INTERVAL=5)
+│   │   ├── useAdTracking.ts     IAB viewability + batched event flush to logAdEvents
+│   │   └── index.ts
+│   └── video/
+│       └── useVideoUpload.ts    waitForMuxProcessing helper
+└── pages/
+    └── VideoFeedPage.tsx        ad splicing + AdCard rendering; web travelProfile race fix (2026-03-02)
 ```
 
 ---
@@ -343,12 +369,15 @@ src/hooks/video/
 | `useCreateCampaign.ts` | covered | covered | covered | covered |
 | `useEditCampaign.ts` | covered | covered | covered | covered |
 
-**Total test count:** 622 passing, 0 failing.
+**Total test count (voyager-ads):** 626 passing, 0 failing.  
+**Total test count (voyager-RN):** 2386 passing across 143 suites, 0 failing.
 
 **Key test patterns:**
 - `vi.hoisted()` used for hls.js mock to avoid temporal dead-zone errors
 - `vitest.setup.ts` supplies global `HTMLMediaElement.prototype.play/pause/load` stubs
 - `CampaignAdPreview` mock (`vi.mock`) used in page-level tests that import it
+- `useAdTracking` mock in voyager-RN must include `getSeenCampaignIds: () => []` (added 2026-03-02 to fix 4 failing tests)
+- E2e campaign wizard tests must call `wizard.fillLandingUrl()` in the Creative step — `landingUrl` is required for step validation
 
 ---
 
@@ -358,54 +387,59 @@ src/hooks/video/
 
 | Item | Details |
 |------|---------|
-| **Deploy Cloud Functions** | `processAdVideoWithMux` and updated `muxWebhook` routing have not been deployed to production. Run `firebase deploy --only functions` from `voyager-pwa/functions/`. |
-| **Register Mux webhook URL** | The `muxWebhook` Cloud Function URL must be registered in the Mux dashboard under **Settings → Webhooks**. Use the production URL: `https://<region>-<project>.cloudfunctions.net/muxWebhook`. |
-| **Firestore security rules** | Verify `ads_campaigns` rules allow the Cloud Function service account to write Mux fields (`muxPlaybackUrl`, `muxStatus`, etc.). Advertisers should only be able to read their own campaign docs. |
+| **Deploy Cloud Functions to production** | `selectAds`, `logAdEvents`, `processAdVideoWithMux` (ownership + bucket fixes), and updated `muxWebhook` routing have been deployed to `mundo1-dev` ✅. Production deployment (`mundo1-1`) still required before ads are live for real users. Run `firebase deploy --only functions --project mundo1-1` from `voyager-pwa/functions/`. |
+| **Deploy voyager-RN app bundle (web travelProfile fix)** | `VideoFeedPage.tsx` race condition fix (2026-03-02) is code-complete and tested but not yet deployed. Rebuild/reload the web hosting bundle to activate. |
+| **Firestore security rules audit** | Verify `ads_campaigns` rules allow `logAdEvents` / `selectAds` service-account writes, and restrict advertiser reads to own docs. |
 
 ### Medium Priority (product completeness)
 
 | Item | Details |
 |------|---------|
-| **Ad selection / delivery** | `selectAd` callable endpoint (server-side ad selection) not yet implemented. voyager-RN and voyager-pwa need to call this to retrieve and render ads in the Video Feed, Itinerary Feed, and AI Itinerary slots. See §4 of `ADS_REQUIREMENTS.md`. |
-| **Impression / click event ingestion** | `POST /events` endpoint not implemented. No impression or click logging exists yet. Required for billing and reporting. |
-| **Billing accuracy** | Stripe prepay checkout exists. But spend tracking (decrementing `budgetCents` on billable events) is not implemented — depends on event ingestion. |
-| **CSV export for reporting** | PRD requires CSV export of daily aggregates. Not yet implemented. |
-| **Video metrics** | VCR (25/50/100% watch completion), video start events not logged. Requires event ingestion infrastructure. |
-| **Frequency caps** | No enforcement layer exists. Needed before serving ads to real users. |
-| **Budget pacing** | No pacing logic implemented. Campaigns could potentially overspend. |
-| **Anomaly detection / anti-fraud** | No click dedup or CTR spike detection. Needed before production traffic. |
-| **`HlsVideoPlayer.tsx` cleanup** | `src/components/common/HlsVideoPlayer.tsx` was created but is no longer actively used (phone-frame approach replaced it). Either delete it or find a use case (e.g., a dedicated video lightbox). |
+| **Android `VideoFeedPage.android.tsx` — travelProfile race** | The web fix (2026-03-02) was not applied to the Android variant. Likely has the same `lastAdContextKeyRef` dedup race. Needs review and the same `loading: true → false` reset before Android ad targeting is reliable. |
+| **Video metrics (VCR quartiles)** | `useAdTracking` logs impressions and clicks. VCR quartile events (25/50/75/100% watch completion) are not yet emitted client-side. `logAdEvents` schema already supports them. |
+| **Itinerary Feed ad rendering** | `selectAds` + `logAdEvents` are implemented and deployed to dev. Itinerary Feed placement UI in voyager-RN not yet wired. |
+| **Budget pacing** | `logAdEvents` decrements `budgetCents` and auto-pauses at zero but no daily smoothing — campaigns can spend their full budget in a burst. |
+| **CSV export for reporting** | PRD requires CSV export of daily aggregates from `CampaignDetailPage`. Not yet implemented. |
+| **Anomaly detection / anti-fraud** | Client-side 24h click dedup exists in `useAdTracking`. Server-side CTR spike detection / automated campaign suspension not implemented. |
+| **`HlsVideoPlayer.tsx` cleanup** | `src/components/common/HlsVideoPlayer.tsx` is unused. Safely deletable unless a video lightbox use case arises. |
 
 ### Lower Priority (pre-pilot)
 
 | Item | Details |
 |------|---------|
-| **Client-side ad rendering (voyager-RN)** | The mobile app needs to render ads in the Video Feed and other placements. Requires `selectAd` endpoint first. |
-| **Client-side ad rendering (voyager-pwa)** | Same for the consumer PWA. |
 | **"Why am I seeing this?" explanation** | Required by PRD §4 (UX hard requirements). A simple dialog explaining targeting criteria. |
 | **User ad flagging** | Consumer apps need a "Flag this ad" option. Flagged items appear in admin moderation queue. |
 | **Privacy/consent UI** | Personalized ads opt-out toggle in user profile. |
-| **Demographic targeting enforcement** | Age/gender targeting UI exists in wizard but consent gating not enforced. |
-| **BigQuery event streaming** | High-volume event logging should stream to BigQuery rather than Firestore for analytics and billing reconciliation. |
+| **Demographic targeting consent enforcement** | Age/gender targeting UI exists in wizard but ATT/consent gating not enforced client-side. |
+| **BigQuery event streaming** | High-volume event logging currently writes directly to Firestore. Should stream to BigQuery for analytics and billing reconciliation at scale. |
 | **Automated creative moderation** | File type/size checks exist at upload; content policy checks (e.g., explicit content detection) not yet in place. |
-| **iOS ATT compliance** | App Tracking Transparency prompt needed before serving personalized ads on iOS. |
-| **App Store / Play Store policy review** | Required before ads are live in mobile apps. |
+| **iOS ATT compliance** | App Tracking Transparency prompt needed before serving personalized ads on iOS 14.5+. |
+| **App Store / Play Store policy review** | Required before ads go live in production mobile apps. |
 
 ---
 
 ## 7. Known Issues & Notes
 
-### `HlsVideoPlayer.tsx` — Unused File
-`src/components/common/HlsVideoPlayer.tsx` was created as a generic `<video controls>` HLS player but was superseded by the phone-frame approach (inline auto-play, no controls bar). It can be safely deleted unless a use case arises (e.g., a standalone video lightbox for admin review of full-resolution assets).
+### ✅ RESOLVED 2026-03-02 — `processAdVideoWithMux` HTTP 500 Unauthorized
+Symptomatic error: `Error: Unauthorized: caller does not own this campaign` for all new ad uploads. Root cause: ownership check used `campaignSnap.data()?.advertiserId` but Firestore stores the owner as `uid`. Fixed by changing to `campaignSnap.data()?.uid`. Deployed to `mundo1-dev`.
 
-### Dual-version Content in `AD_PRODUCT_PRD.md`
-The PRD file contains two merged drafts (the original spec and a revised version). The content is not duplicated per-section but two separate documents appear to be concatenated. It should be cleaned up into a single authoritative version.
+### ✅ RESOLVED 2026-03-02 — Mux signed URL failing on dev
+`processAdVideoWithMux` had `admin.storage().bucket("mundo1-1.appspot.com")` hardcoded. Dev function uses a different default bucket, causing signed-URL generation to fail. Fixed by changing to `admin.storage().bucket()` (project's default). Deployed to `mundo1-dev`.
 
-### Cloud Function Deployment Gap
-All Mux-related Cloud Function code (`processAdVideoWithMux`, `muxWebhook` ad routing) is written and tested locally but **not deployed**. The advertiser PWA will silently fail to transcode videos until this is deployed.
+### ✅ RESOLVED 2026-03-02 — Mux pipeline verified end-to-end
+After both fixes above: Cloud logs confirmed `video.asset.created` → `video.asset.ready` → `Updated ads_campaigns/{id} with playback URL`. Simulator confirmed new "Winter Beach Escape" video ad playing via HLS stream (`stream.mux.com/*.m3u8`).
 
-### Mux Webhook Not Registered
-Even after deploying the function, the Mux dashboard webhook pointing to `muxWebhook` must be manually configured. Without it, `muxStatus` will stay `'preparing'` indefinitely.
+### ✅ RESOLVED 2026-03-02 — Web sending incomplete targeting context
+On web, Firebase Auth restores the auth session asynchronously. `useTravelPreferences` returns early when `userId` is null on first render, leaving `travelProfile = null`. The ad context dedup guard (`lastAdContextKeyRef`) then locked in an incomplete `{gender, age}` key, blocking re-fetch when the travel profile later resolved. **Fix:** `VideoFeedPage.tsx` now exposes `loading` from `useTravelPreferences`, includes `travelProfileLoading` in `buildAdContext` deps, and resets the dedup key when loading transitions `true → false`. Code-complete and tested. **Pending app bundle deploy.**
+
+### ✅ RESOLVED 2026-03-02 — Ad slot at wrong position (showed at index 5 instead of 4)
+`FIRST_AD_AFTER` was `4`, which placed the first ad at mixed-feed index 5 (6th slot). Changed to `3` so the first ad appears at mixed-feed index 4 (5th slot overall): `c c c c AD c c c c c AD …`. All 17 `useAdFrequency` tests updated and passing.
+
+### ⚠️ OPEN — Android `VideoFeedPage.android.tsx` — same race condition unverified
+The web travelProfile race fix was applied to `VideoFeedPage.tsx`. The Android-specific `VideoFeedPage.android.tsx` uses the same `useTravelPreferences` hook and likely has the same `lastAdContextKeyRef` dedup pattern. Needs review and the same fix before Android ad targeting is reliable.
+
+### ⚠️ OPEN — `HlsVideoPlayer.tsx` — Unused File
+`src/components/common/HlsVideoPlayer.tsx` was superseded by the phone-frame approach. Safely deletable unless a video lightbox use case arises.
 
 ### Raw MP4 Auto-play
-The `else` branch (raw MP4 fallback) previously failed to call `play()` after setting `video.src`. This was fixed — all three branches now call `play()`. Tests verify this.
+The `else` branch (raw MP4 fallback) previously failed to call `play()` after setting `video.src`. Fixed — all three branches now call `play()`. Tests verify this.

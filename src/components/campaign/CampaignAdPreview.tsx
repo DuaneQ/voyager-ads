@@ -118,6 +118,10 @@ const VideoFeedPreview: React.FC<{
         bgcolor: '#000',
         aspectRatio: '9 / 16',
         boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+        // colorScheme: dark tells the browser this is a dark-background context.
+        // On HDR-capable displays this can reduce overexposure of wide-gamut
+        // uploads in the preview player.
+        colorScheme: 'dark',
       }}
     >
       {/* Asset or placeholder */}
@@ -129,7 +133,15 @@ const VideoFeedPreview: React.FC<{
           loop
           playsInline
           aria-label="Ad creative"
-          sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          sx={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            display: 'block',
+            // Explicit black background prevents the white flash browsers show
+            // before the first video frame is decoded.
+            backgroundColor: '#000',
+          }}
         />
       ) : (
         <Box

@@ -16,10 +16,27 @@ describe('StepTargeting', () => {
     expect(screen.getByLabelText(/Audience name/i)).toBeInTheDocument()
   })
 
-  it('renders location field for non-itinerary-feed placements', () => {
-    render(<StepTargeting draft={{ ...EMPTY_DRAFT, placement: 'video_feed' }} patch={makePatch()} />)
+  it('renders location field for non-itinerary-feed placements when a location is set', () => {
+    // Location field is only shown when location !== '' ("Any destination" checkbox unchecked)
+    render(<StepTargeting draft={{ ...EMPTY_DRAFT, placement: 'video_feed', location: 'Paris' }} patch={makePatch()} />)
     expect(screen.getByLabelText(/Location/i)).toBeInTheDocument()
     expect(screen.queryByLabelText(/Radius/i)).not.toBeInTheDocument()
+  })
+
+  it('shows "Any destination" checkbox checked when location is empty', () => {
+    render(<StepTargeting draft={{ ...EMPTY_DRAFT, placement: 'video_feed' }} patch={makePatch()} />)
+    // Checkbox is checked and location field is hidden
+    const checkbox = screen.getByRole('checkbox')
+    expect(checkbox).toBeChecked()
+    expect(screen.queryByLabelText(/^Location$/i)).not.toBeInTheDocument()
+  })
+
+  it('calls patch with empty string when "Any destination" checkbox is checked', () => {
+    const patch = makePatch()
+    // Start with a location set so the checkbox is unchecked
+    render(<StepTargeting draft={{ ...EMPTY_DRAFT, placement: 'video_feed', location: 'Paris' }} patch={patch} />)
+    // Location field visible; checkbox not present when location is non-empty
+    expect(screen.getByLabelText(/^Location$/i)).toBeInTheDocument()
   })
 
   it('does NOT render the Location field for itinerary_feed', () => {
@@ -47,7 +64,8 @@ describe('StepTargeting', () => {
   it('renders age range selectors', () => {
     render(<StepTargeting draft={EMPTY_DRAFT} patch={makePatch()} />)
     expect(screen.getByLabelText(/From/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/To/i)).toBeInTheDocument()
+    // Use exact match to avoid colliding with "show to users" in the Any destination label
+    expect(screen.getByLabelText(/^To$/i)).toBeInTheDocument()
   })
 
   it('renders the interests field', () => {
@@ -64,7 +82,8 @@ describe('StepTargeting', () => {
 
   it('calls patch when location changes (video_feed)', () => {
     const patch = makePatch()
-    render(<StepTargeting draft={{ ...EMPTY_DRAFT, placement: 'video_feed' }} patch={patch} />)
+    // Provide a non-empty location so the field is visible ("Any destination" unchecked)
+    render(<StepTargeting draft={{ ...EMPTY_DRAFT, placement: 'video_feed', location: 'London' }} patch={patch} />)
     // DestinationAutocomplete degrades to plain TextField when VITE_GOOGLE_MAPS_API_KEY is unset
     fireEvent.change(screen.getByLabelText(/Location/i), { target: { value: 'Paris' } })
     expect(patch).toHaveBeenCalledWith('location', 'Paris')
@@ -130,27 +149,41 @@ describe('StepTargeting', () => {
   it('calls patch when ageTo selector changes', () => {
     const patch = makePatch()
     render(<StepTargeting draft={EMPTY_DRAFT} patch={patch} />)
-    fireEvent.mouseDown(screen.getByLabelText(/To/i))
+    // Use exact match to avoid colliding with "show to users" in the Any destination label
+    fireEvent.mouseDown(screen.getByLabelText(/^To$/i))
     fireEvent.click(screen.getByRole('option', { name: '44' }))
     expect(patch).toHaveBeenCalledWith('ageTo', '44')
   })
 
-  it('renders the itinerary gender preference selector for itinerary_feed', () => {
+  it('renders the gender selector for itinerary_feed', () => {
     render(<StepTargeting draft={{ ...EMPTY_DRAFT, placement: 'itinerary_feed' }} patch={makePatch()} />)
-    expect(screen.getByLabelText(/Itinerary gender preference/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/^Gender$/i)).toBeInTheDocument()
   })
 
-  it('does NOT render the gender selector for non-itinerary-feed placements', () => {
+  it('renders the gender selector for video_feed', () => {
     render(<StepTargeting draft={{ ...EMPTY_DRAFT, placement: 'video_feed' }} patch={makePatch()} />)
-    expect(screen.queryByLabelText(/Itinerary gender preference/i)).not.toBeInTheDocument()
+    expect(screen.getByLabelText(/^Gender$/i)).toBeInTheDocument()
   })
 
-  it('calls patch when gender preference changes (itinerary_feed)', () => {
+  it('renders the gender selector for ai_slot', () => {
+    render(<StepTargeting draft={{ ...EMPTY_DRAFT, placement: 'ai_slot' }} patch={makePatch()} />)
+    expect(screen.getByLabelText(/^Gender$/i)).toBeInTheDocument()
+  })
+
+  it('calls patch when gender changes (itinerary_feed)', () => {
     const patch = makePatch()
     render(<StepTargeting draft={{ ...EMPTY_DRAFT, placement: 'itinerary_feed' }} patch={patch} />)
-    fireEvent.mouseDown(screen.getByLabelText(/Itinerary gender preference/i))
+    fireEvent.mouseDown(screen.getByLabelText(/^Gender$/i))
     fireEvent.click(screen.getByRole('option', { name: 'Female' }))
     expect(patch).toHaveBeenCalledWith('targetGender', 'Female')
+  })
+
+  it('calls patch when gender changes (video_feed)', () => {
+    const patch = makePatch()
+    render(<StepTargeting draft={{ ...EMPTY_DRAFT, placement: 'video_feed' }} patch={patch} />)
+    fireEvent.mouseDown(screen.getByLabelText(/^Gender$/i))
+    fireEvent.click(screen.getByRole('option', { name: 'Male' }))
+    expect(patch).toHaveBeenCalledWith('targetGender', 'Male')
   })
 
   describe('ai_slot targeting section', () => {

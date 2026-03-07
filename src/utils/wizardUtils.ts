@@ -37,10 +37,9 @@ export function isStepValid(step: number, draft: CampaignDraft, options: StepVal
     }
     case 2: {
       if (!draft.audienceName.trim()) return false
-      // Itinerary feed uses targetDestination; other placements use location
-      return isItineraryFeed
-        ? draft.targetDestination.trim().length > 0
-        : draft.location.trim().length > 0
+      // Itinerary feed requires a specific targetDestination.
+      // Other placements allow an empty location (meaning "any destination").
+      return isItineraryFeed ? draft.targetDestination.trim().length > 0 : true
     }
     case 3: return parseFloat(draft.budgetAmount) > 0
     case 4: return draft.agreePolicy

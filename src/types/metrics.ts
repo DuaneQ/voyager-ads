@@ -21,7 +21,7 @@ export interface DailyMetricSnapshot {
   views?: number
   /** video_feed only: full watches to completion */
   completions?: number
-  spend: number       // USD actually spent that day
+  spend: number       // cents written by logAdEvents (e.g. 500 = $5.00)
 }
 
 // ─── Aggregated KPI row (computed from DailyMetricSnapshot[]) ────────────────
@@ -180,21 +180,30 @@ export function getKpisForPlacement(placement: string): KpiDefinition[] {
 export function computeSummary(snapshots: DailyMetricSnapshot[]): CampaignMetricsSummary {
   const totals = snapshots.reduce(
     (acc, s) => ({
-      impressions: acc.impressions + s.impressions,
-      clicks: acc.clicks + s.clicks,
+      // All fields use ?? 0 to guard against Firestore documents where a counter
+      // field was never written (e.g. a campaign that received impressions but no
+      // clicks will have no `clicks` field at all, which reads as `undefined`).
+      impressions: acc.impressions + (s.impressions ?? 0),
+      clicks: acc.clicks + (s.clicks ?? 0),
       views: acc.views + (s.views ?? 0),
       completions: acc.completions + (s.completions ?? 0),
-      spend: acc.spend + s.spend,
+      // `spend` is written in cents by logAdEvents (increment(dayCharge) where
+      // dayCharge is an integer number of cents). Convert to dollars here so all
+      // derived metrics (CPM, CPC, CPV) and the returned `spend` value are in USD.
+      spend: acc.spend + (s.spend ?? 0),
     }),
     { impressions: 0, clicks: 0, views: 0, completions: 0, spend: 0 }
   )
 
+  // spend stored in Firestore as cents → convert to dollars before all calculations
+  const spendDollars = totals.spend / 100
+
   const ctr = totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : 0
-  const cpm = totals.impressions > 0 ? (totals.spend / totals.impressions) * 1000 : 0
-  const cpc = totals.clicks > 0 ? totals.spend / totals.clicks : Infinity
+  const cpm = totals.impressions > 0 ? (spendDollars / totals.impressions) * 1000 : 0
+  const cpc = totals.clicks > 0 ? spendDollars / totals.clicks : Infinity
   const viewRate = totals.impressions > 0 ? (totals.views / totals.impressions) * 100 : 0
   const completionRate = totals.views > 0 ? (totals.completions / totals.views) * 100 : 0
-  const cpv = totals.views > 0 ? totals.spend / totals.views : Infinity
+  const cpv = totals.views > 0 ? spendDollars / totals.views : Infinity
 
   return {
     impressions: totals.impressions,
@@ -202,7 +211,7 @@ export function computeSummary(snapshots: DailyMetricSnapshot[]): CampaignMetric
     ctr,
     cpm,
     cpc,
-    spend: totals.spend,
+    spend: spendDollars,
     views: totals.views,
     viewRate,
     completions: totals.completions,

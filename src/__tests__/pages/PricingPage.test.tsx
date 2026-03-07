@@ -33,7 +33,8 @@ describe('PricingPage', () => {
   it('renders Promoted itineraries with CPC price', () => {
     render(<PricingPage />)
     expect(screen.getByText(/\$2\.25/)).toBeTruthy()
-    expect(screen.getByText(/per click/)).toBeTruthy()
+    // Multiple placements may show CPC pricing — verify at least one "per click" label exists
+    expect(screen.getAllByText(/per click/).length).toBeGreaterThan(0)
   })
 
   it('renders the Notes section', () => {
