@@ -51,6 +51,11 @@ vi.mock('../../context/AppAlertContext', () => ({
   useAppAlert: () => ({ showSuccess: vi.fn(), showError: vi.fn() }),
 }))
 
+const mockToggle = vi.fn()
+vi.mock('../../hooks/useCampaignStatus', () => ({
+  useCampaignStatus: () => ({ toggle: mockToggle, loading: false, error: null }),
+}))
+
 import CampaignDetailPage from '../../pages/CampaignDetailPage'
 import { useCampaigns } from '../../hooks/useCampaigns'
 import { useCampaignMetrics } from '../../hooks/useCampaignMetrics'
@@ -291,5 +296,76 @@ describe('CampaignDetailPage', () => {
     vi.mocked(useCampaigns).mockReturnValue({ campaigns: [campaign], loading: false, error: null, refetch: vi.fn() })
     renderPage()
     expect(screen.getByText(/Video processing failed.*Unsupported format/i)).toBeInTheDocument()
+  })
+
+  // ── Pause / Resume button ────────────────────────────────────────────────────
+
+  it('shows a Pause button for an active campaign', () => {
+    vi.mocked(useCampaigns).mockReturnValue({
+      campaigns: [{ ...baseCampaign, status: 'active' }],
+      loading: false, error: null, refetch: vi.fn(),
+    })
+    renderPage()
+    expect(screen.getByRole('button', { name: /Pause campaign: Summer Promo/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Resume campaign/i })).not.toBeInTheDocument()
+  })
+
+  it('shows a Resume button for a paused campaign', () => {
+    vi.mocked(useCampaigns).mockReturnValue({
+      campaigns: [{ ...baseCampaign, status: 'paused' }],
+      loading: false, error: null, refetch: vi.fn(),
+    })
+    renderPage()
+    expect(screen.getByRole('button', { name: /Resume campaign: Summer Promo/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Pause campaign/i })).not.toBeInTheDocument()
+  })
+
+  it('hides Pause/Resume for a completed campaign', () => {
+    vi.mocked(useCampaigns).mockReturnValue({
+      campaigns: [{ ...baseCampaign, status: 'completed' }],
+      loading: false, error: null, refetch: vi.fn(),
+    })
+    renderPage()
+    expect(screen.queryByRole('button', { name: /Pause campaign/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Resume campaign/i })).not.toBeInTheDocument()
+  })
+
+  it('hides Pause/Resume when campaign is under review', () => {
+    vi.mocked(useCampaigns).mockReturnValue({
+      campaigns: [{ ...baseCampaign, status: 'active', isUnderReview: true }],
+      loading: false, error: null, refetch: vi.fn(),
+    })
+    renderPage()
+    expect(screen.queryByRole('button', { name: /Pause campaign/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Resume campaign/i })).not.toBeInTheDocument()
+  })
+
+  // ── Budget remaining chip ────────────────────────────────────────────────────
+
+  it('shows Remaining chip when budgetCents is defined', () => {
+    vi.mocked(useCampaigns).mockReturnValue({
+      campaigns: [{ ...baseCampaign, budgetCents: 4991 }],
+      loading: false, error: null, refetch: vi.fn(),
+    })
+    renderPage()
+    expect(screen.getByText('Remaining: $49.91')).toBeInTheDocument()
+  })
+
+  it('does not show Remaining chip when budgetCents is absent', () => {
+    vi.mocked(useCampaigns).mockReturnValue({
+      campaigns: [baseCampaign],
+      loading: false, error: null, refetch: vi.fn(),
+    })
+    renderPage()
+    expect(screen.queryByText(/Remaining:/)).not.toBeInTheDocument()
+  })
+
+  it('shows Remaining chip at $0.00 when budgetCents is 0', () => {
+    vi.mocked(useCampaigns).mockReturnValue({
+      campaigns: [{ ...baseCampaign, budgetCents: 0 }],
+      loading: false, error: null, refetch: vi.fn(),
+    })
+    renderPage()
+    expect(screen.getByText('Remaining: $0.00')).toBeInTheDocument()
   })
 })

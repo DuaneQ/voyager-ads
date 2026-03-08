@@ -214,8 +214,8 @@ const StepTargeting: React.FC<Props> = ({ draft, patch }) => {
         </Box>
       )}
 
-      {/* ── General location (non-itinerary-feed or additional) ───────────── */}
-      {!isItineraryFeed && (
+      {/* ── General location (ai_slot only — destination context is available from the active itinerary) ── */}
+      {isAiSlot && (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
           <FormControlLabel
             control={
@@ -298,13 +298,6 @@ const StepTargeting: React.FC<Props> = ({ draft, patch }) => {
         ))}
       </TextField>
 
-      <TextField
-        label="Interests"
-        value={draft.interests}
-        onChange={e => patch('interests', e.target.value)}
-        placeholder="beach, adventure, family travel"
-        helperText="Comma-separated interests"
-      />
     </Box>
   )
 }

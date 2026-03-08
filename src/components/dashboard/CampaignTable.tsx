@@ -5,6 +5,7 @@ import TableCell from '@mui/material/TableCell'
 import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
+import Box from '@mui/material/Box'
 import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
@@ -13,9 +14,15 @@ import { Link as RouterLink } from 'react-router-dom'
 import type { Campaign, Placement } from '../../types/campaign'
 import CampaignStatusChip from './CampaignStatusChip'
 import { displayDate } from '../../utils/dateUtils'
+import { formatBudgetRemaining, budgetRemainingPercent } from '../../utils/budgetUtils'
 
 interface Props {
   campaigns: Campaign[]
+  /**
+   * Called when the user clicks Pause or Resume in the table Actions column.
+   * If omitted the Pause/Resume buttons are not rendered (backward-compatible).
+   */
+  onToggleStatus?: (campaign: Campaign) => Promise<void>
 }
 
 const PLACEMENT_LABELS: Record<Placement, string> = {
@@ -42,7 +49,7 @@ function formatBudget(amount: string, type: string): string {
   return `${formatted} / ${type === 'daily' ? 'day' : 'lifetime'}`
 }
 
-const CampaignTable: React.FC<Props> = ({ campaigns }) => {
+const CampaignTable: React.FC<Props> = ({ campaigns, onToggleStatus }) => {
   if (campaigns.length === 0) {
     return (
       <Paper variant="outlined" sx={{ p: 6, textAlign: 'center', borderRadius: 2 }}>
@@ -71,6 +78,7 @@ const CampaignTable: React.FC<Props> = ({ campaigns }) => {
             <TableCell>Status</TableCell>
             <TableCell>Schedule</TableCell>
             <TableCell>Budget</TableCell>
+            <TableCell>Remaining</TableCell>
             <TableCell align="right">
               <Tooltip title="Total impressions served">
                 <span>Impressions</span>
@@ -137,6 +145,23 @@ const CampaignTable: React.FC<Props> = ({ campaigns }) => {
                 </Typography>
               </TableCell>
 
+              <TableCell>
+                <Tooltip title={typeof campaign.budgetCents === 'number'
+                  ? `${formatBudgetRemaining(campaign.budgetCents)} of ${formatBudget(campaign.budgetAmount, campaign.budgetType)}`
+                  : 'No spend recorded yet'}
+                >
+                  <Typography
+                    variant="body2"
+                    noWrap
+                    color={(budgetRemainingPercent(campaign.budgetCents, campaign.budgetAmount) ?? 100) < 20
+                      ? 'warning.main'
+                      : 'text.primary'}
+                  >
+                    {formatBudgetRemaining(campaign.budgetCents)}
+                  </Typography>
+                </Tooltip>
+              </TableCell>
+
               {/* Metrics columns — sourced from lifetime counters on the campaign root doc.
                   totalClicks is only written by logAdEvents when clicks > 0, so it may be
                   absent on campaigns with impressions but no clicks. Default it to 0 and
@@ -171,17 +196,40 @@ const CampaignTable: React.FC<Props> = ({ campaigns }) => {
                 )
               })()}
               <TableCell align="right">
-                {!campaign.isUnderReview && (campaign.status === 'paused' || campaign.status === 'draft') && (
-                  <Button
-                    component={RouterLink}
-                    to={`/campaigns/${campaign.id}/edit`}
-                    size="small"
-                    variant="outlined"
-                    aria-label={`Edit ${campaign.name}`}
-                  >
-                    Edit
-                  </Button>
-                )}
+                <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
+                  {onToggleStatus && !campaign.isUnderReview && campaign.status === 'active' && (
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => onToggleStatus(campaign)}
+                      aria-label={`Pause ${campaign.name}`}
+                    >
+                      Pause
+                    </Button>
+                  )}
+                  {onToggleStatus && !campaign.isUnderReview && campaign.status === 'paused' && (
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color="success"
+                      onClick={() => onToggleStatus(campaign)}
+                      aria-label={`Resume ${campaign.name}`}
+                    >
+                      Resume
+                    </Button>
+                  )}
+                  {!campaign.isUnderReview && (campaign.status === 'paused' || campaign.status === 'draft') && (
+                    <Button
+                      component={RouterLink}
+                      to={`/campaigns/${campaign.id}/edit`}
+                      size="small"
+                      variant="outlined"
+                      aria-label={`Edit ${campaign.name}`}
+                    >
+                      Edit
+                    </Button>
+                  )}
+                </Box>
               </TableCell>
             </TableRow>
           ))}

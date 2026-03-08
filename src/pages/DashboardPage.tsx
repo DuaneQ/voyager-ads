@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react'
+import React, { useCallback, useEffect, useMemo } from 'react'
 import { useLocation } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -9,8 +9,10 @@ import CampaignSummaryCards from '../components/dashboard/CampaignSummaryCards'
 import CampaignTable from '../components/dashboard/CampaignTable'
 import MetricsChart from '../components/dashboard/MetricsChart'
 import { useCampaigns } from '../hooks/useCampaigns'
+import { useCampaignStatus } from '../hooks/useCampaignStatus'
 import { useMultiCampaignMetrics } from '../hooks/useMultiCampaignMetrics'
 import { useAppAlert } from '../context/AppAlertContext'
+import type { Campaign } from '../types/campaign'
 
 /**
  * Campaign dashboard — lists the advertiser's campaigns with KPI summary cards
@@ -18,10 +20,16 @@ import { useAppAlert } from '../context/AppAlertContext'
  */
 const DashboardPage: React.FC = () => {
   const { campaigns, loading, error, refetch } = useCampaigns()
+  const { toggle: toggleStatus } = useCampaignStatus(refetch)
   const campaignIds = useMemo(() => campaigns.map(c => c.id), [campaigns])
   const { metricsMap } = useMultiCampaignMetrics(campaignIds)
   const { showSuccess } = useAppAlert()
   const location = useLocation()
+
+  const onToggleStatus = useCallback(
+    (campaign: Campaign) => toggleStatus(campaign.id, campaign.uid, campaign.status),
+    [toggleStatus],
+  )
 
   // Show success banner when redirected here after a wizard submission
   useEffect(() => {
@@ -67,7 +75,7 @@ const DashboardPage: React.FC = () => {
           <>
             <CampaignSummaryCards campaigns={campaigns} />
             <MetricsChart series={chartSeries} title="Performance" />
-            <CampaignTable campaigns={campaigns} />
+            <CampaignTable campaigns={campaigns} onToggleStatus={onToggleStatus} />
           </>
         )}
       </Box>

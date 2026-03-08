@@ -1,6 +1,6 @@
 import React from 'react'
-import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi } from 'vitest'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import CampaignTable from '../../../components/dashboard/CampaignTable'
 import type { Campaign } from '../../../types/campaign'
@@ -53,6 +53,14 @@ function renderTable(campaigns: Campaign[]) {
   return render(
     <BrowserRouter>
       <CampaignTable campaigns={campaigns} />
+    </BrowserRouter>
+  )
+}
+
+function renderTableWithToggle(campaigns: Campaign[], onToggleStatus: (c: Campaign) => Promise<void>) {
+  return render(
+    <BrowserRouter>
+      <CampaignTable campaigns={campaigns} onToggleStatus={onToggleStatus} />
     </BrowserRouter>
   )
 }
@@ -145,5 +153,73 @@ describe('CampaignTable', () => {
     renderTable([base])
     const link = screen.getByRole('link', { name: /Summer Vibes/i })
     expect(link).toHaveAttribute('href', '/campaigns/c1')
+  })
+
+  // ── Remaining column ────────────────────────────────────────────────────────
+
+  it('renders a "Remaining" column header', () => {
+    renderTable([base])
+    expect(screen.getByText('Remaining')).toBeInTheDocument()
+  })
+
+  it('shows "—" in Remaining cell when budgetCents is undefined', () => {
+    renderTable([{ ...base, budgetCents: undefined }])
+    const dashes = screen.getAllByText('—')
+    expect(dashes.length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('shows formatted value in Remaining cell when budgetCents is set', () => {
+    renderTable([{ ...base, budgetCents: 4991 }])
+    expect(screen.getByText('$49.91')).toBeInTheDocument()
+  })
+
+  it('shows "$0.00" in Remaining cell when budgetCents is 0', () => {
+    renderTable([{ ...base, budgetCents: 0 }])
+    expect(screen.getByText('$0.00')).toBeInTheDocument()
+  })
+
+  // ── Pause / Resume actions ───────────────────────────────────────────────────
+
+  it('does not show Pause/Resume buttons when onToggleStatus is not provided', () => {
+    renderTable([{ ...base, status: 'active', isUnderReview: false }])
+    expect(screen.queryByRole('button', { name: /Pause/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Resume/i })).not.toBeInTheDocument()
+  })
+
+  it('shows Pause button for active campaign when onToggleStatus is provided', () => {
+    const onToggle = vi.fn().mockResolvedValue(undefined)
+    renderTableWithToggle([{ ...base, status: 'active', isUnderReview: false }], onToggle)
+    expect(screen.getByRole('button', { name: /Pause/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Resume/i })).not.toBeInTheDocument()
+  })
+
+  it('shows Resume button for paused campaign when onToggleStatus is provided', () => {
+    const onToggle = vi.fn().mockResolvedValue(undefined)
+    renderTableWithToggle([{ ...base, status: 'paused', isUnderReview: false }], onToggle)
+    expect(screen.getByRole('button', { name: /Resume/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Pause/i })).not.toBeInTheDocument()
+  })
+
+  it('calls onToggleStatus with the campaign when Pause is clicked', () => {
+    const onToggle = vi.fn().mockResolvedValue(undefined)
+    const campaign = { ...base, status: 'active' as const, isUnderReview: false }
+    renderTableWithToggle([campaign], onToggle)
+    fireEvent.click(screen.getByRole('button', { name: /Pause/i }))
+    expect(onToggle).toHaveBeenCalledWith(campaign)
+  })
+
+  it('calls onToggleStatus with the campaign when Resume is clicked', () => {
+    const onToggle = vi.fn().mockResolvedValue(undefined)
+    const campaign = { ...base, status: 'paused' as const, isUnderReview: false }
+    renderTableWithToggle([campaign], onToggle)
+    fireEvent.click(screen.getByRole('button', { name: /Resume/i }))
+    expect(onToggle).toHaveBeenCalledWith(campaign)
+  })
+
+  it('does not show Pause/Resume for under-review campaign even with onToggleStatus', () => {
+    const onToggle = vi.fn().mockResolvedValue(undefined)
+    renderTableWithToggle([{ ...base, status: 'active', isUnderReview: true }], onToggle)
+    expect(screen.queryByRole('button', { name: /Pause/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Resume/i })).not.toBeInTheDocument()
   })
 })

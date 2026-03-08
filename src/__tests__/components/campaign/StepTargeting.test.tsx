@@ -16,25 +16,25 @@ describe('StepTargeting', () => {
     expect(screen.getByLabelText(/Audience name/i)).toBeInTheDocument()
   })
 
-  it('renders location field for non-itinerary-feed placements when a location is set', () => {
-    // Location field is only shown when location !== '' ("Any destination" checkbox unchecked)
-    render(<StepTargeting draft={{ ...EMPTY_DRAFT, placement: 'video_feed', location: 'Paris' }} patch={makePatch()} />)
+  it('renders location field for ai_slot when a location is set', () => {
+    // Location field is only shown for ai_slot when location !== '' ("Any destination" checkbox unchecked)
+    render(<StepTargeting draft={{ ...EMPTY_DRAFT, placement: 'ai_slot', location: 'Paris' }} patch={makePatch()} />)
     expect(screen.getByLabelText(/Location/i)).toBeInTheDocument()
     expect(screen.queryByLabelText(/Radius/i)).not.toBeInTheDocument()
   })
 
-  it('shows "Any destination" checkbox checked when location is empty', () => {
-    render(<StepTargeting draft={{ ...EMPTY_DRAFT, placement: 'video_feed' }} patch={makePatch()} />)
+  it('shows "Any destination" checkbox checked when location is empty (ai_slot)', () => {
+    render(<StepTargeting draft={{ ...EMPTY_DRAFT, placement: 'ai_slot' }} patch={makePatch()} />)
     // Checkbox is checked and location field is hidden
     const checkbox = screen.getByRole('checkbox')
     expect(checkbox).toBeChecked()
     expect(screen.queryByLabelText(/^Location$/i)).not.toBeInTheDocument()
   })
 
-  it('calls patch with empty string when "Any destination" checkbox is checked', () => {
+  it('calls patch with empty string when "Any destination" checkbox is checked (ai_slot)', () => {
     const patch = makePatch()
     // Start with a location set so the checkbox is unchecked
-    render(<StepTargeting draft={{ ...EMPTY_DRAFT, placement: 'video_feed', location: 'Paris' }} patch={patch} />)
+    render(<StepTargeting draft={{ ...EMPTY_DRAFT, placement: 'ai_slot', location: 'Paris' }} patch={patch} />)
     // Location field visible; checkbox not present when location is non-empty
     expect(screen.getByLabelText(/^Location$/i)).toBeInTheDocument()
   })
@@ -68,11 +68,6 @@ describe('StepTargeting', () => {
     expect(screen.getByLabelText(/^To$/i)).toBeInTheDocument()
   })
 
-  it('renders the interests field', () => {
-    render(<StepTargeting draft={EMPTY_DRAFT} patch={makePatch()} />)
-    expect(screen.getByLabelText(/Interests/i)).toBeInTheDocument()
-  })
-
   it('calls patch when audience name changes', () => {
     const patch = makePatch()
     render(<StepTargeting draft={EMPTY_DRAFT} patch={patch} />)
@@ -80,13 +75,18 @@ describe('StepTargeting', () => {
     expect(patch).toHaveBeenCalledWith('audienceName', 'Beach Lovers')
   })
 
-  it('calls patch when location changes (video_feed)', () => {
+  it('calls patch when location changes (ai_slot)', () => {
     const patch = makePatch()
     // Provide a non-empty location so the field is visible ("Any destination" unchecked)
-    render(<StepTargeting draft={{ ...EMPTY_DRAFT, placement: 'video_feed', location: 'London' }} patch={patch} />)
+    render(<StepTargeting draft={{ ...EMPTY_DRAFT, placement: 'ai_slot', location: 'London' }} patch={patch} />)
     // DestinationAutocomplete degrades to plain TextField when VITE_GOOGLE_MAPS_API_KEY is unset
     fireEvent.change(screen.getByLabelText(/Location/i), { target: { value: 'Paris' } })
     expect(patch).toHaveBeenCalledWith('location', 'Paris')
+  })
+
+  it('does not render a location field for video_feed placement', () => {
+    render(<StepTargeting draft={{ ...EMPTY_DRAFT, placement: 'video_feed', location: 'London' }} patch={makePatch()} />)
+    expect(screen.queryByLabelText(/Location/i)).not.toBeInTheDocument()
   })
 
   it('calls patch when destination match checkbox is toggled', () => {
@@ -94,13 +94,6 @@ describe('StepTargeting', () => {
     render(<StepTargeting draft={{ ...EMPTY_DRAFT, placement: 'itinerary_feed' }} patch={patch} />)
     fireEvent.click(screen.getByRole('checkbox'))
     expect(patch).toHaveBeenCalledWith('destinationMatch', true)
-  })
-
-  it('calls patch when interests field changes', () => {
-    const patch = makePatch()
-    render(<StepTargeting draft={EMPTY_DRAFT} patch={patch} />)
-    fireEvent.change(screen.getByLabelText(/Interests/i), { target: { value: 'surfing' } })
-    expect(patch).toHaveBeenCalledWith('interests', 'surfing')
   })
 
   it('calls patch when travel start date changes (itinerary_feed)', () => {

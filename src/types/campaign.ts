@@ -150,4 +150,10 @@ export interface Campaign extends CampaignData {
    */
   totalImpressions?: number
   totalClicks?: number
+  /**
+   * Current remaining budget in cents. Written by `logAdEvents` on every
+   * chargeable event (impression for CPM, click for CPC). Absent on campaigns
+   * that have never served a chargeable event.
+   */
+  budgetCents?: number
 }

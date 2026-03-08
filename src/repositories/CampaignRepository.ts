@@ -112,6 +112,7 @@ export class FirestoreCampaignRepository implements ICampaignRepository {
       updatedAt: (raw.updatedAt as Timestamp | null)?.toDate().toISOString() ?? '',
       totalImpressions: typeof raw.totalImpressions === 'number' ? raw.totalImpressions : undefined,
       totalClicks: typeof raw.totalClicks === 'number' ? raw.totalClicks : undefined,
+      budgetCents: typeof raw.budgetCents === 'number' ? raw.budgetCents : undefined,
     }
   }
 

@@ -6,8 +6,11 @@ import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
 import Divider from '@mui/material/Divider'
 import Typography from '@mui/material/Typography'
+import Alert from '@mui/material/Alert'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
+import PauseCircleOutlinedIcon from '@mui/icons-material/PauseCircleOutlined'
+import PlayCircleOutlinedIcon from '@mui/icons-material/PlayCircleOutlined'
 import Nav from '../components/common/Nav'
 import CampaignStatusChip from '../components/dashboard/CampaignStatusChip'
 import CampaignMetricsKPIs from '../components/dashboard/CampaignMetricsKPIs'
@@ -15,9 +18,11 @@ import MetricsChart from '../components/dashboard/MetricsChart'
 import CampaignAdPreview from '../components/campaign/CampaignAdPreview'
 import { useCampaigns } from '../hooks/useCampaigns'
 import { useCampaignMetrics } from '../hooks/useCampaignMetrics'
+import { useCampaignStatus } from '../hooks/useCampaignStatus'
 import { useAppAlert } from '../context/AppAlertContext'
 import type { Placement } from '../types/campaign'
 import { displayDate } from '../utils/dateUtils'
+import { formatBudgetRemaining, budgetRemainingPercent } from '../utils/budgetUtils'
 
 const PLACEMENT_LABELS: Record<Placement, string> = {
   video_feed:     'Video Feed',
@@ -42,8 +47,9 @@ function formatBudget(amount: string, type: string): string {
 
 const CampaignDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
-  const { campaigns, loading: campaignsLoading } = useCampaigns()
+  const { campaigns, loading: campaignsLoading, refetch } = useCampaigns()
   const { showSuccess } = useAppAlert()
+  const { toggle: toggleStatus, loading: statusLoading, error: statusError } = useCampaignStatus(refetch)
   const location = useLocation()
 
   // Show success banner when returning from a successful edit
@@ -136,18 +142,37 @@ const CampaignDetailPage: React.FC = () => {
               />
             </Box>
             {!campaign.isUnderReview && campaign.status !== 'completed' && (
-              <Button
-                component={RouterLink}
-                to={`/campaigns/${campaign.id}/edit`}
-                variant="outlined"
-                size="small"
-                startIcon={<EditOutlinedIcon />}
-                aria-label={`Edit campaign: ${campaign.name}`}
-              >
-                Edit campaign
-              </Button>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={campaign.status === 'active'
+                    ? <PauseCircleOutlinedIcon />
+                    : <PlayCircleOutlinedIcon />}
+                  onClick={() => toggleStatus(campaign.id, campaign.uid, campaign.status)}
+                  disabled={statusLoading}
+                  aria-label={campaign.status === 'active'
+                    ? `Pause campaign: ${campaign.name}`
+                    : `Resume campaign: ${campaign.name}`}
+                >
+                  {campaign.status === 'active' ? 'Pause' : 'Resume'}
+                </Button>
+                <Button
+                  component={RouterLink}
+                  to={`/campaigns/${campaign.id}/edit`}
+                  variant="outlined"
+                  size="small"
+                  startIcon={<EditOutlinedIcon />}
+                  aria-label={`Edit campaign: ${campaign.name}`}
+                >
+                  Edit campaign
+                </Button>
+              </Box>
             )}
           </Box>
+          {statusError && (
+            <Alert severity="error" sx={{ mt: 1 }}>{statusError}</Alert>
+          )}
 
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1.5 }}>
             <Chip
@@ -166,6 +191,17 @@ const CampaignDetailPage: React.FC = () => {
               size="small"
               variant="outlined"
             />
+            {typeof campaign.budgetCents === 'number' && (
+              <Chip
+                label={`Remaining: ${formatBudgetRemaining(campaign.budgetCents)}`}
+                size="small"
+                variant="outlined"
+                color={(budgetRemainingPercent(campaign.budgetCents, campaign.budgetAmount) ?? 100) < 20
+                  ? 'warning'
+                  : 'default'}
+                aria-label={`Budget remaining: ${formatBudgetRemaining(campaign.budgetCents)}`}
+              />
+            )}
           </Box>
 
           {/* Rejection note (if any) */}
