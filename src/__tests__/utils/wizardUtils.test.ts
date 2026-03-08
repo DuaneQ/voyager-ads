@@ -79,7 +79,7 @@ describe('wizardUtils', () => {
       expect(isStepValid(1, { ...BASE_DRAFT, landingUrl: 'example.com' })).toBe(false)
     })
 
-    it('returns false when landingUrl uses http:// scheme', () => {
+    it('returns true when landingUrl uses http:// scheme', () => {
       // http is allowed (mirrors the regex)
       expect(isStepValid(1, { ...BASE_DRAFT, landingUrl: 'http://example.com' })).toBe(true)
     })
