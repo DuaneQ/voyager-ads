@@ -31,6 +31,7 @@ test.describe('Campaign Wizard - placements', () => {
     await wizard.selectPlacement('Video Feed');
     await wizard.next(); // to Creative
     await wizard.fillCreativeHeadline('Video campaign e2e test');
+    await wizard.fillLandingUrl('https://example.com');
     await wizard.fillCTA('Book Now');
     await wizard.next(); // to Targeting
 
@@ -63,6 +64,7 @@ test.describe('Campaign Wizard - placements', () => {
     await wizard.selectPlacement('Itinerary Feed');
     await wizard.next(); // to Creative
     await wizard.fillCreativeHeadline('Itinerary campaign e2e test');
+    await wizard.fillLandingUrl('https://example.com');
     await wizard.fillCTA('Learn more');
     await wizard.next(); // to Targeting
 
@@ -97,6 +99,7 @@ test.describe('Campaign Wizard - placements', () => {
     await wizard.selectPlacement('AI Slots');
     await wizard.next(); // to Creative
     await wizard.fillCreativeHeadline('AI slot campaign e2e test');
+    await wizard.fillLandingUrl('https://example.com');
     await wizard.fillContactAddress('123 Example St');
     await wizard.fillCTA('Learn More');
     await wizard.next(); // to Targeting

@@ -137,11 +137,14 @@ const CampaignTable: React.FC<Props> = ({ campaigns }) => {
                 </Typography>
               </TableCell>
 
-              {/* Metrics columns — sourced from lifetime counters on the campaign root doc */}
+              {/* Metrics columns — sourced from lifetime counters on the campaign root doc.
+                  totalClicks is only written by logAdEvents when clicks > 0, so it may be
+                  absent on campaigns with impressions but no clicks. Default it to 0 and
+                  gate display only on totalImpressions being present. */}
               {(() => {
                 const impr = campaign.totalImpressions
-                const clks = campaign.totalClicks
-                const hasCounts = typeof impr === 'number' && typeof clks === 'number'
+                const clks = campaign.totalClicks ?? 0
+                const hasCounts = typeof impr === 'number'
                 const ctr = hasCounts && impr > 0
                   ? `${((clks / impr) * 100).toFixed(2)}%`
                   : '—'

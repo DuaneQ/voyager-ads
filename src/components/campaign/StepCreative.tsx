@@ -52,6 +52,21 @@ const StepCreative: React.FC<Props> = ({ draft, patch }) => {
   const specText = SPECS[draft.placement] ?? ''
   const [fileError, setFileError] = useState<string | null>(null)
 
+  /** True when a URL is entered but missing an https?:// scheme. */
+  const landingUrlError =
+    draft.landingUrl.trim().length > 0 &&
+    !/^https?:\/\//i.test(draft.landingUrl.trim())
+      ? 'URL must start with https:// (e.g. https://example.com)'
+      : null
+
+  /** Normalize bare domains to https:// on blur so the user doesn't have to type the scheme. */
+  const handleLandingUrlBlur = () => {
+    const url = draft.landingUrl.trim()
+    if (url && !/^https?:\/\//i.test(url)) {
+      patch('landingUrl', `https://${url}`)
+    }
+  }
+
   // Keep draft.creativeType in sync with placement (downstream steps may read it)
   useEffect(() => {
     if (draft.creativeType !== creativeType) patch('creativeType', creativeType)
@@ -159,9 +174,13 @@ const StepCreative: React.FC<Props> = ({ draft, patch }) => {
       <TextField
         label="Landing URL"
         type="url"
+        required
         value={draft.landingUrl}
         onChange={e => patch('landingUrl', e.target.value)}
+        onBlur={handleLandingUrlBlur}
         placeholder="https://"
+        error={!!landingUrlError}
+        helperText={landingUrlError ?? 'The page users will land on after tapping your ad'}
       />
 
       {/* ── AI Slot specific fields ── */}

@@ -120,6 +120,15 @@ describe('CampaignTable', () => {
     expect(screen.getByText('1,602')).toBeInTheDocument()
   })
 
+  it('shows impressions and 0 clicks (not dashes) when totalImpressions is set but totalClicks is absent', () => {
+    // logAdEvents only writes totalClicks when clickCount > 0; campaigns with
+    // impressions but no clicks should display the impression count, not dashes.
+    renderTable([{ ...base, isUnderReview: false, status: 'active', totalImpressions: 42 }])
+    expect(screen.getByText('42')).toBeInTheDocument()
+    expect(screen.getByText('0')).toBeInTheDocument()
+    expect(screen.getByText('0.00%')).toBeInTheDocument()
+  })
+
   it('computes and displays CTR correctly', () => {
     renderTable([{ ...base, isUnderReview: false, status: 'active', totalImpressions: 10000, totalClicks: 250 }])
     expect(screen.getByText('2.50%')).toBeInTheDocument()

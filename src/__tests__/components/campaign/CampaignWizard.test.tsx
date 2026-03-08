@@ -118,13 +118,13 @@ describe('CampaignWizard', () => {
     fireEvent.change(screen.getByLabelText(/Campaign start date/i), { target: { value: '2030-06-01' } })
     fireEvent.click(screen.getByRole('button', { name: /Next/i }))
 
-    // Step 1: creative name
+    // Step 1: creative name + landing URL (both required)
     fireEvent.change(screen.getByLabelText(/Creative name/i), { target: { value: 'Banner' } })
+    fireEvent.change(screen.getByLabelText(/Landing URL/i), { target: { value: 'https://example.com' } })
     fireEvent.click(screen.getByRole('button', { name: /Next/i }))
 
-    // Step 2: audience name + location (video_feed default)
+    // Step 2: audience name (location optional — "Any destination" selected by default for video_feed)
     fireEvent.change(screen.getByLabelText(/Audience name/i), { target: { value: 'Travelers' } })
-    fireEvent.change(screen.getByLabelText(/Location/i), { target: { value: 'Paris' } })
     fireEvent.click(screen.getByRole('button', { name: /Next/i }))
 
     // Step 3: budget amount
@@ -141,10 +141,14 @@ describe('CampaignWizard', () => {
     fireEvent.change(screen.getByLabelText(/Campaign name/i), { target: { value: 'Ad Campaign' } })
     fireEvent.change(screen.getByLabelText(/Campaign start date/i), { target: { value: '2030-06-01' } })
     fireEvent.click(screen.getByRole('button', { name: /Next/i }))
+
+    // Step 1: creative name + landing URL
     fireEvent.change(screen.getByLabelText(/Creative name/i), { target: { value: 'Banner' } })
+    fireEvent.change(screen.getByLabelText(/Landing URL/i), { target: { value: 'https://example.com' } })
     fireEvent.click(screen.getByRole('button', { name: /Next/i }))
+
     fireEvent.change(screen.getByLabelText(/Audience name/i), { target: { value: 'Travelers' } })
-    fireEvent.change(screen.getByLabelText(/Location/i), { target: { value: 'Paris' } })
+    // Location is optional for video_feed ("Any destination" checkbox checked by default)
     fireEvent.click(screen.getByRole('button', { name: /Next/i }))
     fireEvent.change(screen.getByLabelText(/Budget amount/i), { target: { value: '25' } })
     fireEvent.click(screen.getByRole('button', { name: /Next/i }))

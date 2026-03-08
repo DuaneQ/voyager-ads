@@ -112,6 +112,11 @@ export class CampaignWizardPage {
     await upload.setInputFiles(filePath);
   }
 
+  async fillLandingUrl(url: string) {
+    const el = this.page.getByLabel('Landing URL').first();
+    if (await el.count()) await el.fill(url);
+  }
+
   async fillCTA(ctaText: string) {
     const select = this.page.getByLabel('Call to action').first();
     if (await select.count()) {
