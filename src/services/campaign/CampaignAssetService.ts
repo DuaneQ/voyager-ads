@@ -34,6 +34,15 @@ export interface AssetConstraints {
   /** Seconds; null = not a video placement */
   minDurationSeconds: number | null
   maxDurationSeconds: number | null
+  /**
+   * Aspect ratio (width / height) bounds for image placements.
+   * null = no constraint (video placements).
+   * Violation throws a human-readable error with remediation guidance.
+   */
+  minAspectRatio: number | null
+  maxAspectRatio: number | null
+  /** One-line human-readable guidance surfaced in both error messages and the upload UI. */
+  aspectRatioGuidance: string | null
 }
 
 /**
@@ -48,6 +57,9 @@ export const ASSET_CONSTRAINTS: Readonly<Record<string, AssetConstraints>> = {
     acceptedMimeTypes: ['video/mp4', 'video/quicktime'],
     minDurationSeconds: 5,
     maxDurationSeconds: 60,
+    minAspectRatio: null,
+    maxAspectRatio: null,
+    aspectRatioGuidance: null,
   },
   itinerary_feed: {
     maxSizeBytes: 10 * 1024 * 1024,
@@ -55,6 +67,14 @@ export const ASSET_CONSTRAINTS: Readonly<Record<string, AssetConstraints>> = {
     acceptedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
     minDurationSeconds: null,
     maxDurationSeconds: null,
+    /**
+     * Square-ish: 4:5 (0.8) → 5:4 (1.25). Matches Meta/Instagram square ad tolerance.
+     * Recommended: 1080×1080 px (1:1).
+     */
+    minAspectRatio: 0.8,
+    maxAspectRatio: 1.25,
+    aspectRatioGuidance:
+      'Square image required (4:5 to 5:4). Recommended: 1080×1080 px. Crop or resize your image before uploading.',
   },
   ai_slot: {
     maxSizeBytes: 5 * 1024 * 1024,
@@ -62,6 +82,16 @@ export const ASSET_CONSTRAINTS: Readonly<Record<string, AssetConstraints>> = {
     acceptedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
     minDurationSeconds: null,
     maxDurationSeconds: null,
+    /**
+     * Landscape enforced: width must be at least 1.3× the height.
+     * 16:9 (1.78) is ideal; 4:3 (1.33) is the minimum acceptable landscape.
+     * Max 4:1 allows panoramic banners.
+     * Recommended: 1920×1080 px (16:9).
+     */
+    minAspectRatio: 1.3,
+    maxAspectRatio: 4.0,
+    aspectRatioGuidance:
+      'Landscape image required (min 4:3 ratio). Recommended: 1920×1080 px (16:9). Portrait and square images are not accepted.',
   },
 } as const
 
@@ -101,6 +131,26 @@ export interface ICampaignAssetService {
 // ─── Implementation ──────────────────────────────────────────────────────────
 
 export class CampaignAssetService implements ICampaignAssetService {
+  /**
+   * Reads image natural dimensions via HTMLImageElement.
+   * Uses an object URL; URL is revoked after load/error.
+   */
+  private getImageDimensions(file: File): Promise<{ width: number; height: number }> {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file)
+      const img = new Image()
+      img.onload = () => {
+        URL.revokeObjectURL(url)
+        resolve({ width: img.naturalWidth, height: img.naturalHeight })
+      }
+      img.onerror = () => {
+        URL.revokeObjectURL(url)
+        reject(new Error('Unable to read image dimensions. Ensure the file is a valid JPEG, PNG, or WebP.'))
+      }
+      img.src = url
+    })
+  }
+
   /**
    * Reads video duration via HTMLVideoElement.
    * Uses an object URL to avoid blocking the network; URL is revoked after use.
@@ -159,7 +209,28 @@ export class CampaignAssetService implements ICampaignAssetService {
       )
     }
 
-    // 3. Video duration (only for placements with duration constraints)
+    // 3. Image aspect ratio (only for image placements with ratio constraints)
+    if (constraints.minAspectRatio !== null || constraints.maxAspectRatio !== null) {
+      const { width, height } = await this.getImageDimensions(file)
+      if (height === 0) {
+        throw new Error('Unable to read image dimensions. Ensure the file is a valid JPEG, PNG, or WebP.')
+      }
+      const ratio = width / height
+      if (constraints.minAspectRatio !== null && ratio < constraints.minAspectRatio) {
+        throw new Error(
+          `Image dimensions ${width}×${height} (ratio ${ratio.toFixed(2)}) are too tall. ` +
+          constraints.aspectRatioGuidance,
+        )
+      }
+      if (constraints.maxAspectRatio !== null && ratio > constraints.maxAspectRatio) {
+        throw new Error(
+          `Image dimensions ${width}×${height} (ratio ${ratio.toFixed(2)}) are too wide. ` +
+          constraints.aspectRatioGuidance,
+        )
+      }
+    }
+
+    // 4. Video duration (only for placements with duration constraints)
     if (constraints.maxDurationSeconds !== null) {
       const duration = await this.getVideoDuration(file)
 

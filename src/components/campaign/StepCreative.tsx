@@ -35,9 +35,26 @@ const PLACEMENT_TYPE: Record<string, CreativeType> = {
 }
 
 const SPECS: Record<string, string> = {
-  video_feed: 'Vertical video (portrait) · MP4 or MOV · 5–60 seconds · max 500 MB',
-  itinerary_feed: 'Square image · JPEG, PNG, or WebP · max 10 MB',
-  ai_slot: 'Landscape image · JPEG, PNG, or WebP · max 5 MB',
+  video_feed: 'Vertical video (portrait 9:16) · MP4 or MOV · 5–60 seconds · max 500 MB',
+  itinerary_feed: 'Square image (1:1) · Recommended 1080×1080 px · JPEG, PNG, or WebP · max 10 MB',
+  ai_slot: 'Landscape image (16:9) · Recommended 1920×1080 px · JPEG, PNG, or WebP · max 5 MB',
+}
+
+/**
+ * Structured requirements shown in the amber callout below the upload button.
+ * Each entry maps a placement to the key requirements a user must follow to avoid rejection.
+ */
+const IMAGE_REQUIREMENTS: Record<string, { ratio: string; recommended: string; guidance: string }> = {
+  itinerary_feed: {
+    ratio: '4:5 to 5:4 (square-ish)',
+    recommended: '1080 × 1080 px',
+    guidance: 'Portrait and wide-landscape images will be rejected. If your image is wider or taller than these bounds, crop it to square before uploading.',
+  },
+  ai_slot: {
+    ratio: 'Landscape only — min 4:3 (1.3:1)',
+    recommended: '1920 × 1080 px (16:9)',
+    guidance: 'Square and portrait images will be rejected. Export your creative in landscape orientation before uploading.',
+  },
 }
 
 const PLACEMENT_LABELS: Record<string, string> = {
@@ -122,6 +139,40 @@ const StepCreative: React.FC<Props> = ({ draft, patch }) => {
       {specText && (
         <Typography variant="caption" color="text.secondary">{specText}</Typography>
       )}
+
+      {/* ── Per-placement image requirements callout ── */}
+      {IMAGE_REQUIREMENTS[draft.placement] && (() => {
+        const req = IMAGE_REQUIREMENTS[draft.placement]
+        return (
+          <Box
+            sx={{
+              bgcolor: '#fffbeb',
+              border: '1px solid #fbbf24',
+              borderRadius: 2,
+              px: 2,
+              py: 1.5,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 0.5,
+            }}
+            role="note"
+            aria-label="Image requirements"
+          >
+            <Typography variant="caption" sx={{ fontWeight: 700, color: '#92400e' }}>
+              📐 Image requirements
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              <strong>Aspect ratio:</strong> {req.ratio}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              <strong>Recommended size:</strong> {req.recommended}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {req.guidance}
+            </Typography>
+          </Box>
+        )
+      })()}
 
       <Box>
         <input
