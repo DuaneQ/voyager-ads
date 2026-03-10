@@ -12,6 +12,30 @@ This document provides guardrails for AI-assisted code changes within the `voyag
 - Run dev server: `npm run dev`
 
 ## Critical Rules
+
+### 🚨 UNDERSTAND THE DOMAIN BEFORE WRITING FILTERING OR DEDUPLICATION LOGIC 🚨
+
+**ABSOLUTE RULE**: Before writing ANY filter, dedup, exclude, or reduce on a list of results, you MUST understand what the list represents in the context of the app.
+
+**TravalPass core use case**: Users search for OTHER TRAVELLERS going to the **SAME destination** during **overlapping dates**. Multiple results with the same destination is not a bug — it is the entire point of the app. NEVER deduplicate, group, or collapse results by destination.
+
+**Deduplication rules for itinerary search results**:
+- ✅ Deduplicate by **itinerary ID** only
+- ✅ Exclude the **current user's own itineraries** by userId
+- ✅ Exclude **previously viewed itineraries** by ID
+- ❌ NEVER deduplicate by destination
+- ❌ NEVER deduplicate by userId
+- ❌ NEVER filter or group by any field that would hide valid matches
+
+**Before writing any list-processing code on search results, explicitly ask**:
+1. What does each item in this list represent?
+2. What is the user trying to see? Would my filter/dedup hide valid results?
+3. Is there an existing test that would catch this regression?
+
+**If you are unsure — do not add the filter. Ask first.**
+
+---
+
 - Verify TypeScript compilation and run tests before claiming completion.
 - Do not modify production code solely to make tests pass; fix tests or mocks instead.
 - Preserve project structure and naming conventions.
