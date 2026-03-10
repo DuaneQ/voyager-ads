@@ -130,26 +130,27 @@ export interface ICampaignAssetService {
 
 // ─── Implementation ──────────────────────────────────────────────────────────
 
+/**
+ * Reads the natural pixel dimensions of an image File via HTMLImageElement.
+ * Exported so upload UI can run the same check immediately on file selection.
+ */
+export function getImageDimensions(file: File): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      resolve({ width: img.naturalWidth, height: img.naturalHeight })
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error('Unable to read image dimensions. Ensure the file is a valid JPEG, PNG, or WebP.'))
+    }
+    img.src = url
+  })
+}
+
 export class CampaignAssetService implements ICampaignAssetService {
-  /**
-   * Reads image natural dimensions via HTMLImageElement.
-   * Uses an object URL; URL is revoked after load/error.
-   */
-  private getImageDimensions(file: File): Promise<{ width: number; height: number }> {
-    return new Promise((resolve, reject) => {
-      const url = URL.createObjectURL(file)
-      const img = new Image()
-      img.onload = () => {
-        URL.revokeObjectURL(url)
-        resolve({ width: img.naturalWidth, height: img.naturalHeight })
-      }
-      img.onerror = () => {
-        URL.revokeObjectURL(url)
-        reject(new Error('Unable to read image dimensions. Ensure the file is a valid JPEG, PNG, or WebP.'))
-      }
-      img.src = url
-    })
-  }
 
   /**
    * Reads video duration via HTMLVideoElement.
@@ -211,7 +212,7 @@ export class CampaignAssetService implements ICampaignAssetService {
 
     // 3. Image aspect ratio (only for image placements with ratio constraints)
     if (constraints.minAspectRatio !== null || constraints.maxAspectRatio !== null) {
-      const { width, height } = await this.getImageDimensions(file)
+      const { width, height } = await getImageDimensions(file)
       if (height === 0) {
         throw new Error('Unable to read image dimensions. Ensure the file is a valid JPEG, PNG, or WebP.')
       }
