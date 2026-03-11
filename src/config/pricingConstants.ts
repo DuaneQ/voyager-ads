@@ -1,5 +1,13 @@
 // Pricing constants aligned with the backend billing rates in logAdEvents.ts.
 //
+// ⚠️  SYNC GUARD: these values must stay in sync with the constants in
+// voyager-pwa/functions/src/logAdEvents.ts:
+//   price.CPM * 100              → CPM_RATE_CENTS               (500)
+//   price.CPC * 100              → CPC_RATE_CENTS               (50)
+//   CPC_IMPRESSION_FLOOR_CPM*100 → CPC_IMPRESSION_FLOOR_RATE_CENTS (50)
+// The billing-constants suite in functions/src/__tests__/logAdEvents.test.ts
+// pins those backend values and will fail on any unsynchronised change.
+//
 // | Placement            | Model | Price                |
 // | -------------------- | ----- | -------------------- |
 // | Video feed           | CPM   | $5 per 1,000 impr.   |
