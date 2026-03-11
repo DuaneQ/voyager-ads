@@ -26,23 +26,26 @@ describe('Products', () => {
     expect(screen.getByText(/Cost Per Click/)).toBeTruthy()
   })
 
-  it('opens the video pricing modal when CPV / CPM button is clicked', () => {
+  it('opens the video pricing modal when CPM button is clicked', () => {
     render(<Products />)
-    fireEvent.click(screen.getByRole('button', { name: /CPV \/ CPM/i }))
+    // Video feed now only shows CPM (no CPV)
+    const cpmButtons = screen.getAllByRole('button', { name: /^CPM$/i })
+    fireEvent.click(cpmButtons[0])
     expect(screen.getByRole('dialog')).toBeTruthy()
-    expect(screen.getByText(/Cost Per View/)).toBeTruthy()
+    expect(screen.getByText(/Cost Per Mille/)).toBeTruthy()
   })
 
-  it('opens the AI pricing modal when CPC / Premium CPM button is clicked', () => {
+  it('opens the AI pricing modal when CPM / CPC button is clicked', () => {
     render(<Products />)
-    fireEvent.click(screen.getByRole('button', { name: /CPC \/ Premium CPM/i }))
+    fireEvent.click(screen.getByRole('button', { name: /CPM \/ CPC/i }))
     expect(screen.getByRole('dialog')).toBeTruthy()
     expect(screen.getByText(/Cost Per Click/)).toBeTruthy()
   })
 
   it('closes the modal when the close button is clicked', async () => {
     render(<Products />)
-    fireEvent.click(screen.getByRole('button', { name: /CPV \/ CPM/i }))
+    const cpmButtons = screen.getAllByRole('button', { name: /^CPM$/i })
+    fireEvent.click(cpmButtons[0])
     // Dialog should be open
     expect(screen.getByRole('dialog')).toBeTruthy()
     // Click the close button inside the dialog

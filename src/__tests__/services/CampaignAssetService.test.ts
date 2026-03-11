@@ -39,6 +39,33 @@ function makeFile(
 }
 
 /**
+ * Stubs the global Image constructor so getImageDimensions() resolves with
+ * the given width × height without touching the real DOM or loading a file.
+ * Call vi.unstubAllGlobals() in afterEach to restore.
+ */
+function mockImageDimensions(width: number, height: number, shouldError = false) {
+  vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock')
+  vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+
+  class MockImage {
+    naturalWidth = width
+    naturalHeight = height
+    onload: ((e: Event) => void) | null = null
+    onerror: ((e: Event) => void) | null = null
+    set src(_url: string) {
+      Promise.resolve().then(() => {
+        if (shouldError) {
+          this.onerror?.(new Event('error'))
+        } else {
+          this.onload?.(new Event('load'))
+        }
+      })
+    }
+  }
+  vi.stubGlobal('Image', MockImage)
+}
+
+/**
  * Patches HTMLVideoElement so `loadedmetadata` fires synchronously with
  * the given duration (or triggers onerror when duration is NaN).
  * Uses Object.defineProperty because HTMLMediaElement.duration is read-only.
@@ -121,12 +148,22 @@ describe('ASSET_CONSTRAINTS', () => {
     expect(c.maxSizeBytes).toBe(10 * 1024 * 1024)
     expect(c.minDurationSeconds).toBeNull()
     expect(c.maxDurationSeconds).toBeNull()
+    expect(c.minAspectRatio).toBe(0.8)
+    expect(c.maxAspectRatio).toBe(1.25)
   })
 
   it('ai_slot allows max 5 MB with no duration constraint', () => {
     const c = ASSET_CONSTRAINTS['ai_slot']
     expect(c.maxSizeBytes).toBe(5 * 1024 * 1024)
     expect(c.minDurationSeconds).toBeNull()
+    expect(c.minAspectRatio).toBe(1.3)
+    expect(c.maxAspectRatio).toBe(4.0)
+  })
+
+  it('video_feed has no aspect ratio constraints', () => {
+    const c = ASSET_CONSTRAINTS['video_feed']
+    expect(c.minAspectRatio).toBeNull()
+    expect(c.maxAspectRatio).toBeNull()
   })
 })
 
@@ -140,6 +177,7 @@ describe('CampaignAssetService.validate', () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
   })
 
   // ── MIME type ──
@@ -150,11 +188,13 @@ describe('CampaignAssetService.validate', () => {
   })
 
   it('accepts image/jpeg for itinerary_feed', async () => {
+    mockImageDimensions(1080, 1080) // 1:1 — ideal square
     const file = makeFile('ad.jpg', 'image/jpeg', 1024)
     await expect(service.validate(file, 'itinerary_feed')).resolves.toBeUndefined()
   })
 
   it('accepts image/webp for ai_slot', async () => {
+    mockImageDimensions(1920, 1080) // 16:9 — ideal landscape
     const file = makeFile('ad.webp', 'image/webp', 1024)
     await expect(service.validate(file, 'ai_slot')).resolves.toBeUndefined()
   })
@@ -229,6 +269,94 @@ describe('CampaignAssetService.validate', () => {
   it('throws for an unknown placement', async () => {
     const file = makeFile('ad.jpg', 'image/jpeg', 1024)
     await expect(service.validate(file, 'unknown_placement')).rejects.toThrow('Unknown placement')
+  })
+
+  // ── Aspect ratio — ai_slot (landscape required, min 1.3:1, max 4:1) ──
+
+  it('accepts ai_slot image at exactly the minimum ratio (4:3 = 1.33)', async () => {
+    mockImageDimensions(1333, 1000) // ~1.33:1 — just above min 1.3
+    const file = makeFile('ad.jpg', 'image/jpeg', 1024)
+    await expect(service.validate(file, 'ai_slot')).resolves.toBeUndefined()
+  })
+
+  it('accepts ai_slot image at 16:9', async () => {
+    mockImageDimensions(1920, 1080)
+    const file = makeFile('ad.jpg', 'image/jpeg', 1024)
+    await expect(service.validate(file, 'ai_slot')).resolves.toBeUndefined()
+  })
+
+  it('accepts ai_slot image at max ratio (4:1)', async () => {
+    mockImageDimensions(4000, 1000) // exactly 4:1
+    const file = makeFile('ad.jpg', 'image/jpeg', 1024)
+    await expect(service.validate(file, 'ai_slot')).resolves.toBeUndefined()
+  })
+
+  it('rejects ai_slot square image (1:1)', async () => {
+    mockImageDimensions(1080, 1080)
+    const file = makeFile('square.jpg', 'image/jpeg', 1024)
+    await expect(service.validate(file, 'ai_slot')).rejects.toThrow('too tall')
+  })
+
+  it('rejects ai_slot portrait image (9:16)', async () => {
+    mockImageDimensions(1080, 1920)
+    const file = makeFile('portrait.jpg', 'image/jpeg', 1024)
+    await expect(service.validate(file, 'ai_slot')).rejects.toThrow('too tall')
+  })
+
+  it('rejects ai_slot image that is too wide (5:1)', async () => {
+    mockImageDimensions(5000, 1000)
+    const file = makeFile('wide.jpg', 'image/jpeg', 1024)
+    await expect(service.validate(file, 'ai_slot')).rejects.toThrow('too wide')
+  })
+
+  it('ai_slot error message contains placement guidance', async () => {
+    mockImageDimensions(1080, 1920) // portrait
+    const file = makeFile('portrait.jpg', 'image/jpeg', 1024)
+    await expect(service.validate(file, 'ai_slot')).rejects.toThrow('1920\xd71080')
+  })
+
+  // ── Aspect ratio — itinerary_feed (square-ish, 0.8:1 to 1.25:1) ──
+
+  it('accepts itinerary_feed image at exactly 1:1', async () => {
+    mockImageDimensions(1080, 1080)
+    const file = makeFile('ad.jpg', 'image/jpeg', 1024)
+    await expect(service.validate(file, 'itinerary_feed')).resolves.toBeUndefined()
+  })
+
+  it('accepts itinerary_feed image at 4:5 minimum (0.8)', async () => {
+    mockImageDimensions(800, 1000) // exactly 0.8
+    const file = makeFile('ad.jpg', 'image/jpeg', 1024)
+    await expect(service.validate(file, 'itinerary_feed')).resolves.toBeUndefined()
+  })
+
+  it('accepts itinerary_feed image at 5:4 maximum (1.25)', async () => {
+    mockImageDimensions(1250, 1000) // exactly 1.25
+    const file = makeFile('ad.jpg', 'image/jpeg', 1024)
+    await expect(service.validate(file, 'itinerary_feed')).resolves.toBeUndefined()
+  })
+
+  it('rejects itinerary_feed portrait image that is too tall (9:16)', async () => {
+    mockImageDimensions(1080, 1920)
+    const file = makeFile('tall.jpg', 'image/jpeg', 1024)
+    await expect(service.validate(file, 'itinerary_feed')).rejects.toThrow('too tall')
+  })
+
+  it('rejects itinerary_feed landscape image that is too wide (16:9)', async () => {
+    mockImageDimensions(1920, 1080)
+    const file = makeFile('wide.jpg', 'image/jpeg', 1024)
+    await expect(service.validate(file, 'itinerary_feed')).rejects.toThrow('too wide')
+  })
+
+  it('itinerary_feed error message contains placement guidance', async () => {
+    mockImageDimensions(1920, 1080) // too wide
+    const file = makeFile('wide.jpg', 'image/jpeg', 1024)
+    await expect(service.validate(file, 'itinerary_feed')).rejects.toThrow('1080\xd71080')
+  })
+
+  it('rejects when image dimensions cannot be read', async () => {
+    mockImageDimensions(0, 0, true) // shouldError = true
+    const file = makeFile('corrupt.jpg', 'image/jpeg', 1024)
+    await expect(service.validate(file, 'ai_slot')).rejects.toThrow('Unable to read image dimensions')
   })
 })
 

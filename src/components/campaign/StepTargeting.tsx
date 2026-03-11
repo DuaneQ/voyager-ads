@@ -135,18 +135,6 @@ const StepTargeting: React.FC<Props> = ({ draft, patch }) => {
             label="Strict destination match — only show to users whose itinerary destination exactly matches"
           />
 
-          <TextField
-            select
-            label="Itinerary gender preference"
-            value={draft.targetGender}
-            onChange={e => patch('targetGender', e.target.value)}
-            helperText="Target users whose itinerary gender preference matches"
-          >
-            {GENDER_OPTIONS.map(opt => (
-              <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
-            ))}
-          </TextField>
-
           <Divider />
           <Typography variant="caption" color="text.secondary" fontWeight={500}>
             Additional targeting (optional)
@@ -226,15 +214,43 @@ const StepTargeting: React.FC<Props> = ({ draft, patch }) => {
         </Box>
       )}
 
-      {/* ── General location (non-itinerary-feed or additional) ───────────── */}
-      {!isItineraryFeed && (
-        <DestinationAutocomplete
-          label="Location"
-          required
-          value={draft.location}
-          onSelect={(description) => patch('location', description)}
-          helperText="Enter a country, region, or city"
-        />
+      {/* ── General location (ai_slot only — destination context is available from the active itinerary) ── */}
+      {isAiSlot && (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={draft.location === ''}
+                onChange={e => {
+                  if (e.target.checked) {
+                    patch('location', '')
+                  }
+                }}
+              />
+            }
+            label={
+              <Typography variant="body2">
+                Any destination —{' '}
+                <Typography component="span" variant="caption" color="text.secondary">
+                  show to users traveling anywhere
+                </Typography>
+              </Typography>
+            }
+          />
+          {draft.location !== '' && (
+            <DestinationAutocomplete
+              label="Location"
+              value={draft.location}
+              onSelect={(description) => patch('location', description)}
+              helperText="Enter a country, region, or city"
+            />
+          )}
+          {draft.location === '' && (
+            <Typography variant="caption" color="text.secondary" sx={{ pl: 0.5 }}>
+              Your ad will be eligible regardless of the user's travel destination.
+            </Typography>
+          )}
+        </Box>
       )}
 
       {/* ── Age range ────────────────────────────────────────────────────── */}
@@ -271,12 +287,17 @@ const StepTargeting: React.FC<Props> = ({ draft, patch }) => {
       </Box>
 
       <TextField
-        label="Interests"
-        value={draft.interests}
-        onChange={e => patch('interests', e.target.value)}
-        placeholder="beach, adventure, family travel"
-        helperText="Comma-separated interests"
-      />
+        select
+        label="Gender"
+        value={draft.targetGender}
+        onChange={e => patch('targetGender', e.target.value)}
+        helperText="Target users by gender identity. Leave as 'All genders' to show to everyone."
+      >
+        {GENDER_OPTIONS.map(opt => (
+          <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+        ))}
+      </TextField>
+
     </Box>
   )
 }

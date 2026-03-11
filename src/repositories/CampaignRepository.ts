@@ -53,8 +53,12 @@ export class FirestoreCampaignRepository implements ICampaignRepository {
   constructor(private readonly db: Firestore) {}
 
   async create(data: CampaignData, uid: string): Promise<Campaign> {
+    // Strip undefined values — Firestore rejects them even in addDoc.
+    const sanitized = Object.fromEntries(
+      Object.entries(data).filter(([, v]) => v !== undefined),
+    )
     const docRef = await addDoc(collection(this.db, COLLECTION), {
-      ...data,
+      ...sanitized,
       uid,
       status: 'draft' as CampaignStatus,
       isUnderReview: true,
@@ -112,6 +116,7 @@ export class FirestoreCampaignRepository implements ICampaignRepository {
       updatedAt: (raw.updatedAt as Timestamp | null)?.toDate().toISOString() ?? '',
       totalImpressions: typeof raw.totalImpressions === 'number' ? raw.totalImpressions : undefined,
       totalClicks: typeof raw.totalClicks === 'number' ? raw.totalClicks : undefined,
+      budgetCents: typeof raw.budgetCents === 'number' ? raw.budgetCents : undefined,
     }
   }
 
@@ -120,8 +125,14 @@ export class FirestoreCampaignRepository implements ICampaignRepository {
     _uid: string, // retained in signature for interface contract clarity; rules enforce server-side
     partial: Partial<CampaignData & { status: CampaignStatus; isUnderReview: boolean }>,
   ): Promise<void> {
+    // Firestore rejects `undefined` field values — strip them before writing.
+    // Fields like `budgetCents` are server-managed and should never be written
+    // back from the client; omitting undefined values is the safe default.
+    const sanitized = Object.fromEntries(
+      Object.entries(partial).filter(([, v]) => v !== undefined),
+    )
     await updateDoc(doc(this.db, COLLECTION, id), {
-      ...partial,
+      ...sanitized,
       updatedAt: serverTimestamp(),
     })
   }

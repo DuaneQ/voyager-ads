@@ -65,6 +65,10 @@ function getSnapshotValue(snap: DailyMetricSnapshot, key: MetricKey): number {
   if (key === 'ctr') {
     return snap.impressions > 0 ? (snap.clicks / snap.impressions) * 100 : 0
   }
+  if (key === 'spend') {
+    // spend is stored in cents by logAdEvents; convert to dollars for display
+    return (snap.spend ?? 0) / 100
+  }
   return snap[key] ?? 0
 }
 

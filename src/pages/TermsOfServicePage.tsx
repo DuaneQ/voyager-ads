@@ -134,8 +134,7 @@ const TermsOfServicePage: React.FC = () => {
 
         <Section title="5. Payment Terms">
           <P>
-            Campaigns are billed according to the pricing model for each placement (CPM for Itinerary
-            Feed and AI Itinerary placements; CPV for Video Feed placements) as displayed on our{' '}
+            Campaigns are billed according to the pricing model selected during campaign creation (CPM or CPC) as displayed on our{' '}
             <Link component={RouterLink} to="/pricing">Pricing page</Link>. Rates are subject to
             change; the rate in effect at the time your campaign is approved and activated will apply
             for that campaign.

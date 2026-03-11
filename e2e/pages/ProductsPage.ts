@@ -39,9 +39,9 @@ export class ProductsPage {
     this.videoFeedHeading = page.getByRole('heading', { name: 'Video Feed' })
     this.aiItineraryHeading = page.getByRole('heading', { name: 'AI Itinerary Placement' })
 
-    this.itineraryPricingBtn = page.getByRole('button', { name: 'CPC / CPM' })
-    this.videoPricingBtn = page.getByRole('button', { name: 'CPV / CPM' })
-    this.aiPricingBtn = page.getByRole('button', { name: 'CPC / Premium CPM' })
+    this.itineraryPricingBtn = page.getByRole('button', { name: 'CPC / CPM', exact: true })
+    this.videoPricingBtn = page.getByRole('button', { name: 'CPM', exact: true })
+    this.aiPricingBtn = page.getByRole('button', { name: 'CPM / CPC', exact: true })
 
     this.dialog = page.getByRole('dialog')
     this.dialogCloseButton = page.getByLabel('Close')

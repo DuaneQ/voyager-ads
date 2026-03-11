@@ -9,7 +9,8 @@ const makeSnapshot = (overrides: Partial<DailyMetricSnapshot> = {}): DailyMetric
   date: '2026-02-01',
   impressions: 1000,
   clicks: 20,
-  spend: 5.00,
+  // spend is stored in CENTS by logAdEvents. 500 = $5.00, matching CPM_RATE_CENTS=500.
+  spend: 500,
   ...overrides,
 })
 
@@ -56,6 +57,13 @@ describe('CampaignMetricsKPIs', () => {
       renderWithRouter(<CampaignMetricsKPIs placement="video_feed" metrics={videoMetrics} />)
       // Should have views-related KPI cards
       expect(screen.getByLabelText(/Campaign KPIs/i)).toBeInTheDocument()
+    })
+
+    it('shows correct CPM and spend converting cents to dollars', () => {
+      // spend: 500 cents = $5.00; 1000 impressions → CPM = $5.00
+      renderWithRouter(<CampaignMetricsKPIs placement="itinerary_feed" metrics={metrics} />)
+      expect(screen.getByLabelText(/CPM: \$5\.00/i)).toBeInTheDocument()
+      expect(screen.getByLabelText(/Spend: \$5\.00/i)).toBeInTheDocument()
     })
   })
 

@@ -15,12 +15,11 @@ export class PricingPage {
   // ─── Placement cards ──────────────────────────────────────────────────────
   readonly itineraryFeedCard: Locator
   readonly videoFeedCard: Locator
-  readonly promotedItinerariesCard: Locator
+  readonly aiItineraryCard: Locator
 
   // ─── Notes section ────────────────────────────────────────────────────────
   readonly notesHeading: Locator
   readonly noteVideoViews: Locator
-  readonly noteCpaUnavailable: Locator
 
   // ─── CTA links ────────────────────────────────────────────────────────────
   readonly seeProductsLink: Locator
@@ -35,11 +34,10 @@ export class PricingPage {
 
     this.itineraryFeedCard = page.locator('.MuiCard-root').filter({ hasText: 'Itinerary Feed' })
     this.videoFeedCard = page.locator('.MuiCard-root').filter({ hasText: 'Video Feed' })
-    this.promotedItinerariesCard = page.locator('.MuiCard-root').filter({ hasText: 'Promoted itineraries' })
+    this.aiItineraryCard = page.locator('.MuiCard-root').filter({ hasText: 'AI Itinerary Slot' })
 
     this.notesHeading = page.getByRole('heading', { name: 'Notes' })
-    this.noteVideoViews = page.getByText('Video views are counted at ~3s per view by default.')
-    this.noteCpaUnavailable = page.getByText('CPA-based billing is not yet available.')
+    this.noteVideoViews = page.getByText('Video views and completions are tracked for analytics but not billed separately.')
 
     this.seeProductsLink = page.getByRole('link', { name: 'See our Products' })
     this.contactSalesLink = page.getByRole('link', { name: 'contact sales' })

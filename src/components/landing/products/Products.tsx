@@ -52,7 +52,7 @@ const Products: React.FC = () => {
             <li>Targeting: interest, contextual, demographic</li>
             <li>Goals: awareness, consideration, view-through conversions</li>
           </ul>
-          <div className="price"><button className="price-btn" onClick={() => setOpen('video')}>CPV / CPM</button></div>
+          <div className="price"><button className="price-btn" onClick={() => setOpen('video')}>CPM</button></div>
         </div>
 
         <div className="product-card">
@@ -64,7 +64,7 @@ const Products: React.FC = () => {
             <li>Targeting: contextual + itinerary signals</li>
             <li>Goals: high-intent conversions, sponsorships</li>
           </ul>
-          <div className="price"><button className="price-btn" onClick={() => { trackClick('ai_itinerary'); setOpen('ai') }}>CPC / Premium CPM</button></div>
+          <div className="price"><button className="price-btn" onClick={() => { trackClick('ai_itinerary'); setOpen('ai') }}>CPM / CPC</button></div>
         </div>
       </div>
 
@@ -77,8 +77,8 @@ const Products: React.FC = () => {
         )}
         {open === 'video' && (
           <div>
-            <p><strong>CPV</strong> — Cost Per View: advertiser pays when a video view threshold is reached (e.g., 2s or 3s).</p>
-            <p><strong>CPM</strong> — Cost Per Mille: advertiser pays per 1,000 impressions.</p>
+            <p><strong>CPM</strong> — Cost Per Mille: advertiser pays per 1,000 impressions ($5).</p>
+            <p>Video views and completions are tracked for analytics but not billed separately.</p>
           </div>
         )}
         {open === 'ai' && (

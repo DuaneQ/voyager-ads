@@ -27,13 +27,19 @@ export function isStepValid(step: number, draft: CampaignDraft, options: StepVal
       if (draft.endDate && draft.endDate < draft.startDate) return false
       return true
     }
-    case 1: return draft.creativeName.trim().length > 0
+    case 1: {
+      if (draft.creativeName.trim().length === 0) return false
+      // Landing URL is required and must have an explicit scheme
+      const url = draft.landingUrl.trim()
+      if (!url) return false
+      if (!/^https?:\/\//i.test(url)) return false
+      return true
+    }
     case 2: {
       if (!draft.audienceName.trim()) return false
-      // Itinerary feed uses targetDestination; other placements use location
-      return isItineraryFeed
-        ? draft.targetDestination.trim().length > 0
-        : draft.location.trim().length > 0
+      // Itinerary feed requires a specific targetDestination.
+      // Other placements allow an empty location (meaning "any destination").
+      return isItineraryFeed ? draft.targetDestination.trim().length > 0 : true
     }
     case 3: return parseFloat(draft.budgetAmount) > 0
     case 4: return draft.agreePolicy

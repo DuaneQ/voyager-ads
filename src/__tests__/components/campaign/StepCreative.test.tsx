@@ -1,12 +1,37 @@
-import { describe, it, expect, vi } from 'vitest'
-import { screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { render } from '../../../testUtils/test-utils'
 import StepCreative from '../../../components/campaign/StepCreative'
 import { EMPTY_DRAFT } from '../../../types/campaign'
 
 const makePatch = () => vi.fn()
 
+/**
+ * Stub the global Image constructor so getImageDimensions() resolves
+ * immediately with caller-supplied dimensions (default: valid 1080×1080).
+ */
+function mockImageDimensions(width = 1080, height = 1080) {
+  class MockImage {
+    naturalWidth = width
+    naturalHeight = height
+    set src(_: string) {
+      // Trigger onload asynchronously, mirroring real browser behaviour
+      setTimeout(() => this.onload?.(), 0)
+    }
+    onload?: () => void
+    onerror?: () => void
+  }
+  vi.stubGlobal('Image', MockImage)
+}
+
 describe('StepCreative', () => {
+  beforeEach(() => {
+    // Provide a valid 1080×1080 image by default so AR checks don't block tests
+    mockImageDimensions(1080, 1080)
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
   it('renders the creative name field', () => {
     render(<StepCreative draft={EMPTY_DRAFT} patch={makePatch()} />)
     expect(screen.getByLabelText(/Creative name/i)).toBeInTheDocument()
@@ -53,12 +78,12 @@ describe('StepCreative', () => {
 
   it('shows spec text for video_feed', () => {
     render(<StepCreative draft={{ ...EMPTY_DRAFT, placement: 'video_feed' }} patch={makePatch()} />)
-    expect(screen.getByText(/Vertical video \(portrait\)/i)).toBeInTheDocument()
+    expect(screen.getByText(/Vertical video \(portrait 9:16\)/i)).toBeInTheDocument()
   })
 
   it('shows spec text for itinerary_feed', () => {
     render(<StepCreative draft={{ ...EMPTY_DRAFT, placement: 'itinerary_feed' }} patch={makePatch()} />)
-    expect(screen.getByText(/Square image · JPEG, PNG, or WebP · max 10 MB/i)).toBeInTheDocument()
+    expect(screen.getByText(/Square image \(1:1\).*max 10 MB/i)).toBeInTheDocument()
   })
 
   it('shows upload button with "Upload asset" when no file', () => {
@@ -78,14 +103,15 @@ describe('StepCreative', () => {
     expect(screen.getByText('banner.jpg')).toBeInTheDocument()
   })
 
-  it('calls patch with the selected file on upload', () => {
+  it('calls patch with the selected file on upload', async () => {
     const patch = makePatch()
     // Use itinerary_feed so image/jpeg passes the constraint check
     render(<StepCreative draft={{ ...EMPTY_DRAFT, placement: 'itinerary_feed' }} patch={patch} />)
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
     const file = new File(['x'], 'ad.jpg', { type: 'image/jpeg' })
     fireEvent.change(fileInput, { target: { files: [file] } })
-    expect(patch).toHaveBeenCalledWith('assetFile', file)
+    // handleFileChange is async (AR check); wait for patch to be called
+    await waitFor(() => expect(patch).toHaveBeenCalledWith('assetFile', file))
   })
 
   it('shows a file error and does not call patch when MIME type is invalid', () => {

@@ -161,7 +161,16 @@ const StepReview: React.FC<Props> = ({ draft, patch, assetUrl, muxPlaybackUrl })
       {/* Targeting */}
       <SectionCard icon={<PeopleOutlinedIcon fontSize="small" />} title="Audience & Targeting" accentColor="#f57c00">
         <Row label="Audience name" value={draft.audienceName} />
-        <Row label="Location" value={draft.location + (draft.radius ? ` (${draft.radius} km)` : '')} />
+        {draft.placement !== 'itinerary_feed' && (
+          <Row
+            label="Location"
+            value={
+              draft.location
+                ? draft.location + (draft.radius ? ` (${draft.radius} km)` : '')
+                : 'Any destination'
+            }
+          />
+        )}
         <Row label="Destination match" value={draft.destinationMatch ? 'Yes' : 'No'} />
         {draft.targetDestination && (
           <Row label="Target destination" value={draft.targetDestination} />
