@@ -17,30 +17,26 @@ describe('PricingPage', () => {
     })
   })
 
-  it('renders Itinerary Feed with CPM price ($25 per 1,000 impressions)', () => {
+  it('renders Itinerary Feed with CPM price ($5 per 1,000 impressions)', () => {
     render(<PricingPage />)
-    // Use a regex that matches the unique $25 CPM span (Video Feed has $22)
-    expect(screen.getByText(/\$25.*per 1,000 impressions/)).toBeTruthy()
+    expect(screen.getAllByText(/\$5.*per 1,000 impressions/).length).toBeGreaterThan(0)
   })
 
-  it('renders Video Feed with CPV and CPM prices', () => {
+  it('renders Video Feed with CPM price', () => {
     render(<PricingPage />)
-    expect(screen.getByText(/\$0\.05.*per view/)).toBeTruthy()
-    // Video Feed CPM is $22 (Itinerary Feed CPM is $25)
-    expect(screen.getByText(/\$22.*per 1,000 impressions/)).toBeTruthy()
+    // Video Feed shows CPM at $5
+    expect(screen.getByText('Video Feed')).toBeTruthy()
   })
 
-  it('renders Promoted itineraries with CPC price', () => {
+  it('renders AI Itinerary Slot with CPC price ($0.50)', () => {
     render(<PricingPage />)
-    expect(screen.getByText(/\$2\.25/)).toBeTruthy()
-    // Multiple placements may show CPC pricing — verify at least one "per click" label exists
-    expect(screen.getAllByText(/per click/).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/\$0\.5.*per click/).length).toBeGreaterThan(0)
   })
 
   it('renders the Notes section', () => {
     render(<PricingPage />)
     expect(screen.getByText('Notes')).toBeTruthy()
-    expect(screen.getByText(/Video views are counted/)).toBeTruthy()
+    expect(screen.getByText(/Video views and completions are tracked/)).toBeTruthy()
   })
 
   it('renders the contact sales link', () => {

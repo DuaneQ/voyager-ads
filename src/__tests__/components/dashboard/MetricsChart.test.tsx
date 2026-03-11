@@ -8,7 +8,7 @@ import type { DailyMetricSnapshot } from '../../../types/metrics'
 // environment only cares about the data reaching the chart boundary.
 vi.mock('@mui/x-charts/LineChart', () => ({
   LineChart: ({ series }: { series: { id: string; data: number[] }[] }) => (
-    <div data-testid="line-chart" data-series={JSON.stringify(series.map(s => ({ id: s.id, len: s.data.length })))} />
+    <div data-testid="line-chart" data-series={JSON.stringify(series.map(s => ({ id: s.id, len: s.data.length, data: s.data })))} />
   ),
 }))
 
@@ -139,5 +139,29 @@ describe('MetricsChart', () => {
   it('empty state has accessible role=status', () => {
     render(<MetricsChart series={[]} />)
     expect(screen.getByRole('status')).toBeInTheDocument()
+  })
+
+  it('converts spend from cents to dollars (no 100x inflation)', () => {
+    // Spend stored in Firestore as cents: 500 cents = $5.00
+    const today = new Date()
+    const fmt = (d: Date) => {
+      const y = d.getFullYear()
+      const m = String(d.getMonth() + 1).padStart(2, '0')
+      const day = String(d.getDate()).padStart(2, '0')
+      return `${y}-${m}-${day}`
+    }
+    const snaps: DailyMetricSnapshot[] = [
+      { date: fmt(today), impressions: 100, clicks: 5, spend: 500 },
+    ]
+    render(
+      <MetricsChart series={[makeSeries('c1', snaps)]} defaultMetric="spend" defaultRange={7} />
+    )
+    const chart = screen.getByTestId('line-chart')
+    const parsed = JSON.parse(chart.getAttribute('data-series') ?? '[]')
+    // The spend value for today's slot should be 5.00 (dollars), NOT 500 (cents)
+    const todayData = parsed[0].data as number[]
+    // Last element is today's value
+    const todayValue = todayData[todayData.length - 1]
+    expect(todayValue).toBe(5) // $5.00, not $500 (cents)
   })
 })
