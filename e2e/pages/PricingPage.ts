@@ -20,7 +20,6 @@ export class PricingPage {
   // ─── Notes section ────────────────────────────────────────────────────────
   readonly notesHeading: Locator
   readonly noteVideoViews: Locator
-  readonly noteCpaUnavailable: Locator
 
   // ─── CTA links ────────────────────────────────────────────────────────────
   readonly seeProductsLink: Locator
@@ -39,7 +38,6 @@ export class PricingPage {
 
     this.notesHeading = page.getByRole('heading', { name: 'Notes' })
     this.noteVideoViews = page.getByText('Video views and completions are tracked for analytics but not billed separately.')
-    this.noteCpaUnavailable = page.getByText('CPA-based billing is not yet available.')
 
     this.seeProductsLink = page.getByRole('link', { name: 'See our Products' })
     this.contactSalesLink = page.getByRole('link', { name: 'contact sales' })

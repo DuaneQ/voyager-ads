@@ -74,10 +74,6 @@ test.describe('Pricing page', () => {
     await expect(pricingPage.noteVideoViews).toBeVisible()
   })
 
-  test('notes state CPA billing is not yet available', async ({ pricingPage }) => {
-    await expect(pricingPage.noteCpaUnavailable).toBeVisible()
-  })
-
   // ─── CTA links ────────────────────────────────────────────────────────────
 
   test('"See our Products" link navigates to /products', async ({ pricingPage, page }) => {

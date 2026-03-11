@@ -62,7 +62,6 @@ const PricingPage: React.FC = () => {
             <ListItem disableGutters><ListItemText primary="Prices above are billed per impression/click/view as shown." /></ListItem>
             <ListItem disableGutters><ListItemText primary="CPC campaigns include a $0.50 per 1,000 impression floor charge. This applies even when no clicks occur, ensuring delivery costs are tracked and budgets deplete at a minimum rate." /></ListItem>
             <ListItem disableGutters><ListItemText primary="Video views and completions are tracked for analytics but not billed separately." /></ListItem>
-            <ListItem disableGutters><ListItemText primary="CPA-based billing is not yet available." /></ListItem>
           </List>
           <Typography variant="body2" sx={{ mt: 1 }}>
             Want a custom package?{' '}
