@@ -63,10 +63,9 @@ test.describe('Products page', () => {
 
   // ─── Video Feed modal ─────────────────────────────────────────────────────
 
-  test('Video Feed CPV/CPM button opens pricing dialog', async ({ productsPage }) => {
+  test('Video Feed CPM button opens pricing dialog', async ({ productsPage }) => {
     await productsPage.openVideoPricingModal()
     await expect(productsPage.dialog).toBeVisible()
-    await expect(productsPage.dialog).toContainText('Cost Per View')
     await expect(productsPage.dialog).toContainText('Cost Per Mille')
   })
 
@@ -78,7 +77,7 @@ test.describe('Products page', () => {
 
   // ─── AI Itinerary modal ───────────────────────────────────────────────────
 
-  test('AI Placement CPC/Premium CPM button opens pricing dialog', async ({ productsPage }) => {
+  test('AI Placement CPM/CPC button opens pricing dialog', async ({ productsPage }) => {
     await productsPage.openAiPricingModal()
     await expect(productsPage.dialog).toBeVisible()
     await expect(productsPage.dialog).toContainText('Cost Per Click')
