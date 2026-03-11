@@ -37,36 +37,31 @@ test.describe('Pricing page', () => {
 
   // ─── Itinerary Feed card ──────────────────────────────────────────────────
 
-  test('Itinerary Feed card shows CPM at $25 per 1,000 impressions', async ({ pricingPage }) => {
-    await expect(pricingPage.itineraryFeedCard).toContainText('$25')
+  test('Itinerary Feed card shows CPM at $5 per 1,000 impressions', async ({ pricingPage }) => {
+    await expect(pricingPage.itineraryFeedCard).toContainText('$5')
     await expect(pricingPage.itineraryFeedCard).toContainText('per 1,000 impressions')
   })
 
   test('Itinerary Feed card shows billing model label', async ({ pricingPage }) => {
-    await expect(pricingPage.itineraryFeedCard).toContainText('CPC or CPM')
+    await expect(pricingPage.itineraryFeedCard).toContainText('CPM or CPC')
   })
 
   // ─── Video Feed card ──────────────────────────────────────────────────────
 
-  test('Video Feed card shows CPV at $0.05 per view', async ({ pricingPage }) => {
-    await expect(pricingPage.videoFeedCard).toContainText('$0.05')
-    await expect(pricingPage.videoFeedCard).toContainText('per view')
-  })
-
-  test('Video Feed card shows CPM at $22 per 1,000 impressions', async ({ pricingPage }) => {
-    await expect(pricingPage.videoFeedCard).toContainText('$22')
+  test('Video Feed card shows CPM at $5 per 1,000 impressions', async ({ pricingPage }) => {
+    await expect(pricingPage.videoFeedCard).toContainText('$5')
     await expect(pricingPage.videoFeedCard).toContainText('per 1,000 impressions')
   })
 
   test('Video Feed card shows billing model label', async ({ pricingPage }) => {
-    await expect(pricingPage.videoFeedCard).toContainText('CPV or CPM')
+    await expect(pricingPage.videoFeedCard).toContainText('CPM')
   })
 
-  // ─── Promoted itineraries card ────────────────────────────────────────────
+  // ─── AI Itinerary Slot card    ────────────────────────────────────────────
 
-  test('Promoted itineraries card shows CPC at $2.25 per click', async ({ pricingPage }) => {
-    await expect(pricingPage.promotedItinerariesCard).toContainText('$2.25')
-    await expect(pricingPage.promotedItinerariesCard).toContainText('per click')
+  test('AI Itinerary Slot card shows CPC at $0.50 per click', async ({ pricingPage }) => {
+    await expect(pricingPage.aiItineraryCard).toContainText('$0.5')
+    await expect(pricingPage.aiItineraryCard).toContainText('per click')
   })
 
   // ─── Notes section ────────────────────────────────────────────────────────
@@ -75,7 +70,7 @@ test.describe('Pricing page', () => {
     await expect(pricingPage.notesHeading).toBeVisible()
   })
 
-  test('notes mention video view counting threshold', async ({ pricingPage }) => {
+  test('notes mention video views are analytics only', async ({ pricingPage }) => {
     await expect(pricingPage.noteVideoViews).toBeVisible()
   })
 
