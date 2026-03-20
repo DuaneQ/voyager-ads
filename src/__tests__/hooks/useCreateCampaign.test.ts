@@ -33,6 +33,33 @@ vi.mock('../../services/campaign/CampaignAssetService', () => ({
   },
 }))
 
+// Mock Firebase functions for Mux processing
+const mockProcessAdVideoWithMux = vi.fn()
+vi.mock('firebase/functions', () => ({
+  httpsCallable: vi.fn(() => mockProcessAdVideoWithMux),
+}))
+
+// Mock Firestore for waitForMuxProcessing  
+vi.mock('firebase/firestore', () => ({
+  onSnapshot: vi.fn((docRef, callback) => {
+    // Simulate Mux processing completion with proper DocumentSnapshot
+    setTimeout(() => {
+      const mockSnapshot = {
+        exists: () => true,
+        data: () => ({ muxPlaybackUrl: 'https://stream.mux.com/test.m3u8' })
+      }
+      callback(mockSnapshot)
+    }, 10)
+    return vi.fn() // unsubscribe function
+  }),
+  doc: vi.fn(),
+}))
+
+vi.mock('../../config/firebaseConfig', () => ({
+  functions: {},
+  db: {},
+}))
+
 import { campaignRepository } from '../../repositories/campaignRepositoryInstance'
 
 // Helper to make a minimal fake File
@@ -46,6 +73,8 @@ describe('useCreateCampaign', () => {
     ;(campaignRepository.create as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'campaign-abc' })
     mockValidate.mockResolvedValue(undefined)
     mockUpload.mockResolvedValue({ downloadUrl: 'https://cdn.example.com/asset.jpg', storagePath: 'ads/user-123/asset.jpg' })
+    // Mock successful Mux processing
+    mockProcessAdVideoWithMux.mockResolvedValue({ data: { success: true } })
   })
 
   // ── Initial state ──
