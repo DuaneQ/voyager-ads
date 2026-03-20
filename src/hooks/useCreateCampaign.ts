@@ -1,12 +1,47 @@
 import { useState, useCallback } from 'react'
 import { httpsCallable } from 'firebase/functions'
+import { onSnapshot, doc } from 'firebase/firestore'
 import { type CampaignDraft, type CampaignData, EMPTY_DRAFT } from '../types/campaign'
 import { campaignRepository } from '../repositories/campaignRepositoryInstance'
 import useAuthStore from '../store/authStore'
 import { campaignAssetService } from '../services/campaign/CampaignAssetService'
-import { functions } from '../config/firebaseConfig'
+import { functions, db } from '../config/firebaseConfig'
 
 export const STEP_COUNT = 5
+
+/**
+ * Listens to a single Firestore document until Mux marks it ready or errored.
+ * Resolves (never rejects) — worst case after 90 s so the user is never blocked.
+ *
+ * Cost note: this is one onSnapshot subscription per campaign creation, on the document
+ * the user just created. It cancels itself as soon as Mux responds, which
+ * typically takes 15–60 s. It is NOT a feed-wide listener.
+ */
+function waitForMuxProcessing(campaignId: string): Promise<void> {
+  return new Promise((resolve) => {
+    let unsub: () => void = () => {};
+
+    const timeout = setTimeout(() => {
+      unsub();
+      resolve();
+    }, 90_000);
+
+    unsub = onSnapshot(doc(db, 'ads_campaigns', campaignId), (snap) => {
+      if (!snap.exists()) {
+        clearTimeout(timeout);
+        unsub();
+        resolve();
+        return;
+      }
+      const data = snap.data();
+      if (data?.muxPlaybackUrl || data?.muxStatus === 'ready' || data?.muxStatus === 'errored') {
+        clearTimeout(timeout);
+        unsub();
+        resolve();
+      }
+    });
+  });
+}
 
 /**
  * Manages wizard step navigation, campaign draft state, asset upload, and Firestore submission.
@@ -15,6 +50,7 @@ export const STEP_COUNT = 5
  *   1. Validate the asset file (type, size, video duration) via CampaignAssetService.
  *   2. Upload the file to Firebase Storage; surface progress via `uploadProgress` (0-100).
  *   3. Write the campaign document to Firestore with the resulting `assetUrl`.
+ *   4. For video_feed campaigns: Wait for Mux processing to complete before marking as submitted.
  *
  * All state mutation goes through `patch` to keep updates predictable and testable.
  */
@@ -26,6 +62,7 @@ export function useCreateCampaign() {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
+  const [processingStatus, setProcessingStatus] = useState<string | null>(null)
 
   const patch = useCallback(<K extends keyof CampaignDraft>(key: K, value: CampaignDraft[K]) => {
     setDraft(prev => ({ ...prev, [key]: value }))
@@ -80,19 +117,40 @@ export function useCreateCampaign() {
       }
       const createdCampaign = await campaignRepository.create(campaignData, uid)
 
-      // Trigger Mux transcoding for video_feed campaigns — non-blocking.
-      // The processAdVideoWithMux Cloud Function generates a signed URL, submits
-      // it to Mux, and writes muxStatus/muxPlaybackUrl back to Firestore when done.
+      // Trigger Mux transcoding for video_feed campaigns and wait for completion
+      // CRITICAL: Only campaigns with working Mux URLs should be marked as submitted
       if (draft.placement === 'video_feed' && storagePath) {
         const processAd = httpsCallable(functions, 'processAdVideoWithMux')
-        processAd({ campaignId: createdCampaign.id, storagePath })
-          .catch(err => console.error('[processAdVideoWithMux] Failed to trigger Mux processing:', err))
+        
+        try {
+          setProcessingStatus('Processing video...')
+          
+          // Trigger Mux processing
+          await processAd({ campaignId: createdCampaign.id, storagePath })
+          
+          // Wait for Mux processing to complete (up to 90 seconds)
+          // The waitForMuxProcessing utility resolves when either:
+          // 1. muxPlaybackUrl is available (success)
+          // 2. muxStatus === 'errored' (failure) 
+          // 3. 90 second timeout (fail-safe)
+          await waitForMuxProcessing(createdCampaign.id)
+          
+          setProcessingStatus(null)
+        } catch (muxError) {
+          setProcessingStatus(null)
+          setIsUploading(false)
+          setUploadProgress(0)
+          const muxMessage = muxError instanceof Error ? muxError.message : 'Video processing failed - please try a different format'
+          setSubmitError(muxMessage)
+          return // Don't mark as submitted if Mux processing failed
+        }
       }
 
       setSubmitted(true)
     } catch (err) {
       setIsUploading(false)
       setUploadProgress(0)
+      setProcessingStatus(null)
       const message =
         err instanceof Error ? err.message : 'Failed to submit campaign. Please try again.'
       setSubmitError(message)
@@ -106,7 +164,23 @@ export function useCreateCampaign() {
     setSubmitError(null)
     setIsUploading(false)
     setUploadProgress(0)
+    setProcessingStatus(null)
   }, [])
 
-  return { step, draft, patch, next, back, goTo, submit, reset, submitted, submitError, isUploading, uploadProgress }
+  return { 
+    step, 
+    draft, 
+    patch, 
+    next, 
+    back, 
+    goTo, 
+    submit, 
+    reset, 
+    submitted, 
+    submitError, 
+    isUploading, 
+    uploadProgress,
+    processingStatus,
+    waitForMuxProcessing // Expose for testing
+  }
 }
