@@ -891,3 +891,194 @@ Mark each checkbox as it is verified. Record actual result in the **Result** col
 - `SjgNVINC66OUEHjIAqev` — `budgetCents: 4999` (started 5000) confirms billing pipeline is live: 1 cent was charged, consistent with `Math.round(1 × 500 / 1000) = 1` cent for the first impression logged after deployment.
 - `billingModel: "cpm"`, `budgetType: "daily"`, `ageFrom: "25"`, `ageTo: "44"`, `audienceName: "Beach & Leisure Travelers"` — targeting is set, will score +2 for age match on users 25–44.
 - Five campaigns visible in the left panel — we need to know the status of each to identify which are active vs not, for use in negative test scenarios.
+
+---
+
+## 16. Phase 2 & 3 Implementation Guide — Lessons from Phase 1 (Video Feed)
+
+> **Audience:** The engineer implementing Phase 2 (Itinerary Card Feed) and Phase 3 (AI Itinerary promotions).  
+> **Purpose:** Apply the bugs discovered and fixed during Phase 1 from the start, rather than discovering them again mid-implementation.  
+> **Date written:** 2026-03-21
+
+---
+
+### 16.1 Double `selectAds` Call — Apply Debounce From Day One
+
+**What happened in Phase 1:** When `useUserProfile` and `useTravelPreferences` resolved on the same render cycle (within milliseconds), the `useEffect` in `VideoFeedPage` fired twice, causing two concurrent `selectAds` calls, duplicate Cloud Function invocations, and confusing log output.
+
+**Fix pattern — copy this into every ad-delivering page:**
+
+```tsx
+// 1. Consolidate all targeting fields into a single memoized fn
+const buildAdContext = useCallback(() => {
+  const ctx: Record<string, string | number | string[] | undefined> = {};
+  if (userProfile?.gender) ctx.gender = userProfile.gender;
+  if (userProfile?.dob) {
+    const age = calculateAge(userProfile.dob);
+    if (age > 0) ctx.age = age;
+  }
+  if (travelProfile?.activities?.length > 0) ctx.activityPreferences = travelProfile.activities;
+  if (travelProfile?.travelStyle) ctx.travelStyles = [travelProfile.travelStyle];
+  // Add placement-specific fields here (e.g. destination for itinerary_feed)
+  return Object.keys(ctx).length > 0 ? (ctx as AdUserContext) : undefined;
+}, [userProfile?.gender, userProfile?.dob, travelProfile?.activities, travelProfile?.travelStyle]);
+
+// 2. Debounce the fetch — 300ms window collapses same-cycle re-renders
+const fetchAdsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+useEffect(() => {
+  if (fetchAdsTimerRef.current) clearTimeout(fetchAdsTimerRef.current);
+  fetchAdsTimerRef.current = setTimeout(() => {
+    fetchAds(buildAdContext(), getSeenIds());
+  }, 300);
+  return () => {
+    if (fetchAdsTimerRef.current) clearTimeout(fetchAdsTimerRef.current);
+  };
+}, [fetchAds, getSeenIds, buildAdContext]);
+```
+
+**Also applies to:** Android `VideoFeedPage.android.tsx` (not yet fixed as of 2026-03-21).
+
+---
+
+### 16.2 travelProfile Race Condition (Web Only) — Apply Loading Guard
+
+**What happened in Phase 1:** On web, Firebase Auth restores asynchronously. `useTravelPreferences` returned `null` on the first render because `userId` was null. The dedup key locked in `{gender, age}` before `travelProfile` resolved, and never refreshed it.
+
+**Fix pattern — wrap `buildAdContext` and the dedup ref reset:**
+
+```tsx
+const { defaultProfile: travelProfile, loading: travelProfileLoading } = useTravelPreferences();
+
+// Include travelProfileLoading in buildAdContext deps to force key change on resolution
+const buildAdContext = useCallback(() => {
+  if (travelProfileLoading) return undefined; // Don't fetch until travel profile is ready
+  // ... rest of context building
+}, [userProfile?.gender, userProfile?.dob, travelProfile?.activities, travelProfile?.travelStyle, travelProfileLoading]);
+
+// Reset dedup key when loading transitions true → false
+const prevTravelLoadingRef = useRef(true);
+useEffect(() => {
+  if (prevTravelLoadingRef.current && !travelProfileLoading) {
+    lastAdContextKeyRef.current = '';
+  }
+  prevTravelLoadingRef.current = travelProfileLoading;
+}, [travelProfileLoading]);
+```
+
+**iOS/Android:** This race does not occur on native (Auth restores synchronously from secure storage), but include the guard anyway for code consistency and to keep web working correctly.
+
+---
+
+### 16.3 `applySeenPenalty` — Use the Shared Helper, Don't Re-implement
+
+**What happened in Phase 1:** The seen-campaign penalty was embedded inline in `scoreCampaign` with no unit test coverage. It was extracted into a named, testable export.
+
+**Rule for Phase 2 & 3:** Import `applySeenPenalty` from `selectAds.ts` — do not re-implement the penalty logic per-placement. The function signature and invariant are:
+
+```typescript
+// In voyager-pwa/functions/src/selectAds.ts
+export function applySeenPenalty(rawScore: number, seen: boolean): number {
+  return seen ? rawScore - 5 : rawScore;
+}
+// Invariant: unseen score-0 (0) always beats seen max score (score 3 − 5 = −2)
+```
+
+When adding Phase 2/3 placements to `selectAds`, call `applySeenPenalty` in the same place (after raw targeting score is computed, before sorting).
+
+---
+
+### 16.4 Daily Budget Reset — Already Implemented, Just Deploy
+
+**What happened in Phase 1:** `budgetType: 'daily'` existed in the data model from the start. No daily reset was implemented. Daily-budget campaigns were effectively lifetime-budget campaigns until `resetDailyBudgets` was written.
+
+**Current state (2026-03-21):** `resetDailyBudgets` is fully implemented and tested in `voyager-pwa/functions/src/resetDailyBudgets.ts`. It runs at 00:05 UTC daily. **Deploy it before Phase 2 or Phase 3 launch** — do not wait until Phase 2 is complete.
+
+```bash
+firebase deploy --only functions:resetDailyBudgets --project mundo1-1
+```
+
+No code changes needed for Phase 2/3 — the function handles all `budgetType: 'daily'` campaigns regardless of placement.
+
+---
+
+### 16.5 Campaign Creation Duplicate — `createdCampaignRef` Pattern
+
+**What happened in Phase 1:** When Mux processing failed and the advertiser retried, a second Firestore campaign document was created because `campaignRepository.create()` was called unconditionally at the top of `submit()`.
+
+**Fix already in `useCreateCampaign.ts`:** `createdCampaignRef` caches the returned `{ id }` after the first `create()` call. Retry attempts skip `create()` entirely and jump to the Mux step.
+
+**For Phase 2/3 campaign types** (e.g., new placement types, itinerary-feed-specific wizard): if a new `useCreate*Campaign.ts` hook is written, apply the same pattern from day one:
+
+```tsx
+const createdCampaignRef = useRef<{ id: string } | null>(null);
+
+// In submit():
+let campaign: { id: string };
+if (createdCampaignRef.current) {
+  campaign = createdCampaignRef.current;       // retry path
+} else {
+  campaign = await campaignRepository.create(data, uid);
+  createdCampaignRef.current = campaign;       // cache for retry
+}
+
+// In reset():
+createdCampaignRef.current = null;
+```
+
+---
+
+### 16.6 Mux Timeout — 480s for All Video Campaigns
+
+**What happened in Phase 1:** `waitForMuxProcessing` had a 90-second timeout. iPhone HDR videos take up to 9 minutes to transcode. Campaigns appeared without a `muxPlaybackUrl`, and retry produced a duplicate campaign (see 16.5).
+
+**Current state:** Timeout is already 480s (8 min) in `voyager-RN/src/hooks/video/useVideoUpload.ts`. No changes needed for Phase 2/3 — this hook is shared.
+
+**If a new video upload flow is written** for Phase 2/3: use the same `waitForMuxProcessing` helper rather than implementing a new timeout, and keep the 480s value.
+
+---
+
+### 16.7 CPM Billing Structure — Industry Standard, No Change Needed
+
+**Discussion during Phase 1:** CPM campaigns receive ad clicks for "free" (clicks are logged but not billed). At $5 CPM and $0.50 CPC, the breakeven CTR is 1% (`$5 ÷ (1,000 × $0.50)`). Typical video feed CTR is 0.3–0.8%, meaning CPM advertisers pay more per click than CPC advertisers at these rates.
+
+**Decision:** The CPM/CPC model is industry standard (Facebook, TikTok, Google all use the same structure). No rate adjustment was made. Revisit with real CTR data after 30 days in production if loophole abuse is detected.
+
+**For Phase 2 (Itinerary Feed) and Phase 3 (AI Slot):** Use the same billing constants already defined in `logAdEvents.ts`. Do not change `CPM_RATE_CENTS` or `CPC_RATE_CENTS` without a product decision and cost analysis.
+
+---
+
+### 16.8 Phase 1 Verification Status (Test Suite)
+
+All Phase 1 tests verified on `mundo1-dev` before Phase 2 begins:
+
+| Test | Description | Status |
+|------|-------------|--------|
+| T1 | Ad appears in video feed | ✅ Verified |
+| T2 | Age targeting scoring | ✅ Verified |
+| T3 | Gender scoring + hard filter | ✅ Verified |
+| T4 | Impression tracked in Firestore | ✅ Verified |
+| T5 | Click tracked + `budgetCents` decremented | ✅ Verified |
+| T6 | Seen-campaign deduplication | ✅ Verified |
+| T7 | Budget exhaustion → auto-pause | ✅ Verified |
+| T8 | Expired campaign filtered (`endDate < today`) | ✅ Verified |
+| T9 | CPC billing E2E (click → 50¢ deduction → pause) | ✅ Verified 2026-03-21 — 1 billable click of 3 (24h dedup ✅), `budgetCents: 4949`, `spend: 51`, auto-paused at 0, ad filtered on reload |
+
+**Test suite counts at Phase 1 close (2026-03-21):**
+- `voyager-pwa/functions`: **572 passed** (24 suites)
+- `voyager-RN`: **2402 passed**
+- `voyager-ads`: **701 passed**
+
+---
+
+### 16.9 Pre-Start Checklist for Phase 2 & 3 Engineers
+
+Before writing the first line of Itinerary Feed or AI Slot ad delivery code:
+
+- [ ] Read sections 16.1–16.7 above
+- [ ] Confirm `resetDailyBudgets` is deployed to production (`mundo1-1`)
+- [ ] Apply `buildAdContext` + debounce pattern (§16.1) to the new page
+- [ ] Apply travelProfile loading guard (§16.2) for web compatibility
+- [ ] Import `applySeenPenalty` from `selectAds.ts` — do not re-implement (§16.3)
+- [ ] If writing a new campaign creation hook, use `createdCampaignRef` pattern (§16.5)
+- [ ] Confirm Android variant receives both race fix + debounce before Android ships
+- [ ] Add unit tests for any new placement-specific scoring logic before opening PR
