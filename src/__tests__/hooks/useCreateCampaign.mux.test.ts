@@ -140,23 +140,23 @@ describe('useCreateCampaign - Mux validation', () => {
       await expect(result.current.waitForMuxProcessing('test-video-id')).resolves.toBe('ready')
     })
 
-    it('should resolve on timeout after 90 seconds', { timeout: 100000 }, async () => {
+    it('should resolve on timeout after 8 minutes', { timeout: 30000 }, async () => {
       vi.useFakeTimers()
-      
-      // Mock onSnapshot to never call the callback (simulate pending forever)
-      ;(onSnapshot as ReturnType<typeof vi.fn>).mockImplementation(() => vi.fn())
+      try {
+        // Mock onSnapshot to never call the callback (simulate pending forever)
+        ;(onSnapshot as ReturnType<typeof vi.fn>).mockImplementation(() => vi.fn())
 
-      const { result } = renderHook(() => useCreateCampaign())
-      
-      // This test should pass now that waitForMuxProcessing is implemented
-      const promise = result.current.waitForMuxProcessing('test-video-id')
-      
-      // Fast-forward time to trigger timeout
-      vi.advanceTimersByTime(90000)
-      
-      await expect(promise).resolves.toBe('timeout')
-      
-      vi.useRealTimers()
+        const { result } = renderHook(() => useCreateCampaign())
+
+        const promise = result.current.waitForMuxProcessing('test-video-id')
+
+        // Fast-forward to match the 480 s (8 min) timeout in waitForMuxProcessing
+        vi.advanceTimersByTime(480_000)
+
+        await expect(promise).resolves.toBe('timeout')
+      } finally {
+        vi.useRealTimers()
+      }
     })
 
     it('should resolve errored when the Firestore listener fires an error', async () => {

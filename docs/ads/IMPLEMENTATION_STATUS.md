@@ -2,7 +2,7 @@
 
 > Last updated: 2026-03-21  
 > Project: `voyager-ads` (React + TypeScript + Vite) + `voyager-RN` (Expo) + `voyager-pwa/functions` (Cloud Functions)  
-> Test suite: **701 tests passing** (voyager-ads) · **2402 tests passing** (voyager-RN) · **565 tests passing** (functions) | TypeScript: **clean (0 errors)** on all projects
+> Test suite: **701 tests passing** (voyager-ads) · **2402 tests passing** (voyager-RN) · **572 tests passing** (functions) | TypeScript: **clean (0 errors)** on all projects
 
 ---
 
@@ -392,17 +392,18 @@ src/
 |------|---------|
 | **Deploy Cloud Functions to production** | `selectAds`, `logAdEvents`, `processAdVideoWithMux`, `resetDailyBudgets` (new — daily budget reset), and updated `muxWebhook` routing have been deployed to `mundo1-dev` ✅. Production deployment (`mundo1-1`) still required. Run `firebase deploy --only functions:selectAds,functions:logAdEvents,functions:resetDailyBudgets --project mundo1-1` from `voyager-pwa/functions/`. |
 | **Deploy voyager-RN app bundle** | `VideoFeedPage.tsx` race condition fix (2026-03-02) and double-fetch debounce fix (2026-03-21) are code-complete and tested but not yet deployed as web bundle. Rebuild/reload the web hosting bundle to activate. |
-| **T9 CPC billing E2E test** | CPC test campaigns were deleted during Phase 1 testing. Must recreate via `localhost:5173/create-campaign` (billing=CPC, $5 daily, video_feed, age 18–34), then set `isUnderReview: false`, `status: active`, `budgetCents: 500` in Firestore. Test: tap CTA → `budgetCents` drops 50 cents; set to 50, tap again → 0 cents → `status: paused`. |
+| ~~**T9 CPC billing E2E test**~~ | ✅ **RESOLVED 2026-03-21** — 1 billable click out of 3 attempts (24h dedup confirmed), `budgetCents: 4949`, `spend: 51` (1¢ CPM + 50¢ CPC), auto-paused at 0, ad absent on hard reload. |
 | **Firestore security rules audit** | Verify `ads_campaigns` rules allow `logAdEvents` / `selectAds` / `resetDailyBudgets` service-account writes, and restrict advertiser reads to own docs. |
 
 ### Medium Priority (product completeness)
 
 | Item | Details |
 |------|---------|
-| **Android `VideoFeedPage.android.tsx` — travelProfile race** | The web fix (2026-03-02) was not applied to the Android variant. Likely has the same `lastAdContextKeyRef` dedup race. Needs review and the same `loading: true → false` reset before Android ad targeting is reliable. |
+| **Android `VideoFeedPage.android.tsx` — travelProfile race + double-fetch** | The web race fix (2026-03-02) and the debounce fix (2026-03-21) were not applied to the Android variant. Must apply both: (1) `prevTravelLoadingRef` reset pattern; (2) `buildAdContext` useCallback + `fetchAdsTimerRef` debounce. See AD_DELIVERY_PLAN.md §16. |
 | **Video metrics (VCR quartiles)** | `useAdTracking` logs impressions and clicks. VCR quartile events (25/50/75/100% watch completion) are not yet emitted client-side. `logAdEvents` schema already supports them. |
-| **Itinerary Feed ad rendering** | `selectAds` + `logAdEvents` are implemented and deployed to dev. Itinerary Feed placement UI in voyager-RN not yet wired. |
-| **Budget pacing** | `logAdEvents` decrements `budgetCents` and auto-pauses at zero but no daily smoothing — campaigns can spend their full budget in a burst. |
+| **Phase 2 — Itinerary Feed ad rendering** | `selectAds` + `logAdEvents` are implemented and deployed to dev. Itinerary Feed placement UI in voyager-RN not yet wired. **Read AD_DELIVERY_PLAN.md §16 before starting — apply debounce and dedup patterns from Phase 1.** |
+| **Phase 3 — AI Itinerary promotion slot (production data)** | Wired to `useAdDelivery` in AIItineraryDisplay. Currently uses AI-hallucinated placeholders when no real ad is returned. Verify real ad data flows end-to-end in dev before prod launch. **Read AD_DELIVERY_PLAN.md §16 before starting.** |
+| **Budget pacing** | `logAdEvents` decrements `budgetCents` and auto-pauses at zero but no intra-day smoothing — campaigns can spend their full budget in a burst. Phase 2 scope. |
 | **CSV export for reporting** | PRD requires CSV export of daily aggregates from `CampaignDetailPage`. Not yet implemented. |
 | **Anomaly detection / anti-fraud** | Client-side 24h click dedup exists in `useAdTracking`. Server-side CTR spike detection / automated campaign suspension not implemented. |
 | **`HlsVideoPlayer.tsx` cleanup** | `src/components/common/HlsVideoPlayer.tsx` is unused. Safely deletable unless a video lightbox use case arises. |
