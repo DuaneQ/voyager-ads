@@ -5,7 +5,7 @@
  * 
  * These tests define the behavior BEFORE implementation to follow TDD approach.
  */
-import { renderHook, act, waitFor } from '@testing-library/react'
+import { renderHook, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { User } from 'firebase/auth'
 
@@ -130,8 +130,7 @@ describe('useCreateCampaign - Mux validation', () => {
 
       const { result } = renderHook(() => useCreateCampaign())
       
-      // This test should now pass with waitForMuxProcessing implemented
-      await expect(result.current.waitForMuxProcessing('test-video-id')).resolves.toBeUndefined()
+      await expect(result.current.waitForMuxProcessing('test-video-id')).resolves.toBe('ready')
     })
 
     it('should resolve on timeout after 90 seconds', { timeout: 100000 }, async () => {
@@ -148,9 +147,24 @@ describe('useCreateCampaign - Mux validation', () => {
       // Fast-forward time to trigger timeout
       vi.advanceTimersByTime(90000)
       
-      await expect(promise).resolves.toBeUndefined()
+      await expect(promise).resolves.toBe('timeout')
       
       vi.useRealTimers()
+    })
+
+    it('should resolve errored when the Firestore listener fires an error', async () => {
+      ;(onSnapshot as ReturnType<typeof vi.fn>).mockImplementation(
+        (_docRef, _onNext, onError) => {
+          setTimeout(() => onError(new Error('permission-denied')), 10)
+          return vi.fn()
+        },
+      )
+
+      const { result } = renderHook(() => useCreateCampaign())
+
+      await expect(
+        result.current.waitForMuxProcessing('test-video-id'),
+      ).resolves.toBe('errored')
     })
   })
 
@@ -251,13 +265,13 @@ describe('useCreateCampaign - Mux validation', () => {
       vi.useRealTimers()
     })
 
-    it.skip('should show error when mux processing fails', async () => {
+    it('should show error when mux processing fails', async () => {
       const mockErrorSnapshot = {
         exists: () => true,
         data: () => ({ muxStatus: 'errored' })
       }
       
-      ;(onSnapshot as ReturnType<typeof vi.fn>).mockImplementation((docRef, callback) => {
+      ;(onSnapshot as ReturnType<typeof vi.fn>).mockImplementation((_docRef, callback) => {
         setTimeout(() => callback(mockErrorSnapshot), 100)
         return vi.fn()
       })
@@ -279,15 +293,12 @@ describe('useCreateCampaign - Mux validation', () => {
       expect(result.current.submitError).toContain('Video processing failed')
     })
 
-    it.skip('should allow retry after mux failure without re-upload', async () => {
-      // First attempt - mux fails
-      const mockErrorSnapshot = {
-        exists: () => true,
-        data: () => ({ muxStatus: 'errored' })
-      }
-      
-      ;(onSnapshot as ReturnType<typeof vi.fn>).mockImplementation((docRef, callback) => {
-        setTimeout(() => callback(mockErrorSnapshot), 100)
+    it('should allow retry after mux failure without re-upload', async () => {
+      const mockUpload = campaignAssetService.upload as ReturnType<typeof vi.fn>
+
+      // First attempt — Mux errors
+      ;(onSnapshot as ReturnType<typeof vi.fn>).mockImplementation((_docRef, callback) => {
+        setTimeout(() => callback({ exists: () => true, data: () => ({ muxStatus: 'errored' }) }), 100)
         return vi.fn()
       })
 
@@ -299,31 +310,56 @@ describe('useCreateCampaign - Mux validation', () => {
         result.current.patch('assetFile', videoFile)
       })
 
-      await act(async () => {
-        await result.current.submit()
-      })
+      await act(async () => { await result.current.submit() })
 
-      expect(result.current.submitError).toBeTruthy() // First attempt should fail
+      expect(result.current.submitError).toBeTruthy() // First attempt shows error
+      expect(result.current.submitted).toBe(false)
+      expect(mockUpload).toHaveBeenCalledTimes(1)
       
-      // Second attempt - mux succeeds (mock different response)
-      const mockSuccessSnapshot = {
-        exists: () => true,
-        data: () => ({ muxPlaybackUrl: 'https://stream.mux.com/abc.m3u8' })
-      }
-      
-      ;(onSnapshot as ReturnType<typeof vi.fn>).mockImplementation((docRef, callback) => {
-        setTimeout(() => callback(mockSuccessSnapshot), 100)  
+      // Second attempt — Mux succeeds; same file, so upload should be skipped
+      ;(onSnapshot as ReturnType<typeof vi.fn>).mockImplementation((_docRef, callback) => {
+        setTimeout(() => callback({ exists: () => true, data: () => ({ muxPlaybackUrl: 'https://stream.mux.com/abc.m3u8' }) }), 100)
         return vi.fn()
       })
 
-      // Retry should work without re-uploading file
-      await act(async () => {
-        await result.current.submit()
+      await act(async () => { await result.current.submit() })
+
+      // Upload should only have been called once (cached from first attempt)
+      expect(mockUpload).toHaveBeenCalledTimes(1)
+      expect(result.current.submitted).toBe(true)
+    })
+
+    it('should re-upload if the user picks a new file after a failed attempt', async () => {
+      const videoFile = makeVideoFile()
+      const mockUpload = campaignAssetService.upload as ReturnType<typeof vi.fn>
+      const { result } = renderHook(() => useCreateCampaign())
+
+      act(() => {
+        result.current.patch('placement', 'video_feed')
+        result.current.patch('assetFile', videoFile)
       })
 
-      // Upload should only be called once (from first attempt)
-      expect(mockUpload).toHaveBeenCalledTimes(1) // Will FAIL if retry re-uploads
-      expect(result.current.submitted).toBe(true) // Should succeed on retry
+      // First submit — processAdVideoWithMux throws (e.g. network error)
+      mockProcessAdVideoWithMux.mockRejectedValueOnce(new Error('network error'))
+      await act(async () => { await result.current.submit() })
+      expect(result.current.submitError).toBeTruthy()
+      expect(mockUpload).toHaveBeenCalledTimes(1)
+
+      // User picks a new file — upload cache must be invalidated
+      const newVideoFile = makeVideoFile('video2.mp4')
+      act(() => { result.current.patch('assetFile', newVideoFile) })
+
+      // Second submit — succeeds; wire up onSnapshot so waitForMuxProcessing resolves
+      ;(onSnapshot as ReturnType<typeof vi.fn>).mockImplementation((_docRef, callback) => {
+        setTimeout(() => callback({ exists: () => true, data: () => ({ muxPlaybackUrl: 'https://stream.mux.com/new.m3u8' }) }), 50)
+        return vi.fn()
+      })
+      mockProcessAdVideoWithMux.mockResolvedValueOnce({ data: { success: true } })
+      await act(async () => { await result.current.submit() })
+
+      // New file must have been uploaded (total = 2)
+      expect(mockUpload).toHaveBeenCalledTimes(2)
+      expect(result.current.submitted).toBe(true)
     })
   })
 

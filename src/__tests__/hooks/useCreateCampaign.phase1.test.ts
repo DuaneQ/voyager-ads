@@ -4,7 +4,7 @@
  * Focus: Core Mux validation functionality
  * Critical: "NO CUSTOMER PAYS FOR BROKEN CAMPAIGNS"
  */
-import { renderHook, act } from '@testing-library/react'
+import { renderHook } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useCreateCampaign } from '../../hooks/useCreateCampaign'
 import { onSnapshot } from 'firebase/firestore'
@@ -73,7 +73,7 @@ describe('Phase 1.0: Mux Validation', () => {
 
     const { result } = renderHook(() => useCreateCampaign())
     
-    await expect(result.current.waitForMuxProcessing('test-video-id')).resolves.toBeUndefined()
+    await expect(result.current.waitForMuxProcessing('test-video-id')).resolves.toBe('ready')
   })
 
   it('✅ waitForMuxProcessing resolves when muxStatus is ready', async () => {
@@ -89,7 +89,7 @@ describe('Phase 1.0: Mux Validation', () => {
 
     const { result } = renderHook(() => useCreateCampaign())
     
-    await expect(result.current.waitForMuxProcessing('test-video-id')).resolves.toBeUndefined()
+    await expect(result.current.waitForMuxProcessing('test-video-id')).resolves.toBe('ready')
   })
 
   it('✅ waitForMuxProcessing times out after 90 seconds', { timeout: 100000 }, async () => {
@@ -102,7 +102,7 @@ describe('Phase 1.0: Mux Validation', () => {
     const promise = result.current.waitForMuxProcessing('test-video-id')
     vi.advanceTimersByTime(90000)
     
-    await expect(promise).resolves.toBeUndefined()
+    await expect(promise).resolves.toBe('timeout')
     
     vi.useRealTimers()
   })

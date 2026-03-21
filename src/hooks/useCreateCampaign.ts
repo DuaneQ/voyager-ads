@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { httpsCallable } from 'firebase/functions'
 import { onSnapshot, doc } from 'firebase/firestore'
 import { type CampaignDraft, type CampaignData, EMPTY_DRAFT } from '../types/campaign'
@@ -9,37 +9,54 @@ import { functions, db } from '../config/firebaseConfig'
 
 export const STEP_COUNT = 5
 
+type MuxOutcome = 'ready' | 'errored' | 'timeout'
+
 /**
  * Listens to a single Firestore document until Mux marks it ready or errored.
- * Resolves (never rejects) — worst case after 90 s so the user is never blocked.
+ * Returns an explicit outcome so the caller can distinguish success from failure.
+ * Resolves after 90 s at the latest so the user is never blocked indefinitely.
  *
  * Cost note: this is one onSnapshot subscription per campaign creation, on the document
  * the user just created. It cancels itself as soon as Mux responds, which
  * typically takes 15–60 s. It is NOT a feed-wide listener.
  */
-function waitForMuxProcessing(campaignId: string): Promise<void> {
+function waitForMuxProcessing(campaignId: string): Promise<MuxOutcome> {
   return new Promise((resolve) => {
     let unsub: () => void = () => {};
 
     const timeout = setTimeout(() => {
       unsub();
-      resolve();
+      resolve('timeout');
     }, 90_000);
 
-    unsub = onSnapshot(doc(db, 'ads_campaigns', campaignId), (snap) => {
-      if (!snap.exists()) {
+    unsub = onSnapshot(
+      doc(db, 'ads_campaigns', campaignId),
+      (snap) => {
+        if (!snap.exists()) {
+          clearTimeout(timeout);
+          unsub();
+          resolve('errored');
+          return;
+        }
+        const data = snap.data();
+        if (data?.muxPlaybackUrl || data?.muxStatus === 'ready') {
+          clearTimeout(timeout);
+          unsub();
+          resolve('ready');
+        } else if (data?.muxStatus === 'errored') {
+          clearTimeout(timeout);
+          unsub();
+          resolve('errored');
+        }
+      },
+      (_err) => {
+        // Firestore listener error (e.g. permission denied, network failure).
+        // Treat as a failure so submit() surfaces an error instead of timing out silently.
         clearTimeout(timeout);
         unsub();
-        resolve();
-        return;
-      }
-      const data = snap.data();
-      if (data?.muxPlaybackUrl || data?.muxStatus === 'ready' || data?.muxStatus === 'errored') {
-        clearTimeout(timeout);
-        unsub();
-        resolve();
-      }
-    });
+        resolve('errored');
+      },
+    );
   });
 }
 
@@ -64,7 +81,16 @@ export function useCreateCampaign() {
   const [uploadProgress, setUploadProgress] = useState(0)
   const [processingStatus, setProcessingStatus] = useState<string | null>(null)
 
+  // Cache the upload result so retrying submit does not re-upload the same file.
+  // Cleared when the user selects a new file or calls reset().
+  const uploadedAssetRef = useRef<{ assetUrl: string; storagePath: string } | null>(null)
+
   const patch = useCallback(<K extends keyof CampaignDraft>(key: K, value: CampaignDraft[K]) => {
+    // When the user picks a new asset file, invalidate the cached upload result
+    // so the next submit re-uploads the new file instead of the old one.
+    if (key === 'assetFile') {
+      uploadedAssetRef.current = null
+    }
     setDraft(prev => ({ ...prev, [key]: value }))
   }, [])
 
@@ -87,17 +113,25 @@ export function useCreateCampaign() {
       let storagePath: string | null = null
 
       if (draft.assetFile) {
-        // Validate first so the user gets an error before any bytes are transferred.
-        await campaignAssetService.validate(draft.assetFile, draft.placement)
+        if (uploadedAssetRef.current) {
+          // Reuse the result from a previous successful upload (retry path).
+          // Avoids charging the user a second upload on a transient failure.
+          assetUrl = uploadedAssetRef.current.assetUrl
+          storagePath = uploadedAssetRef.current.storagePath
+        } else {
+          // Validate first so the user gets an error before any bytes are transferred.
+          await campaignAssetService.validate(draft.assetFile, draft.placement)
 
-        setIsUploading(true)
-        setUploadProgress(0)
-        const result = await campaignAssetService.upload(draft.assetFile, uid, (pct) => {
-          setUploadProgress(pct)
-        })
-        assetUrl = result.downloadUrl
-        storagePath = result.storagePath
-        setIsUploading(false)
+          setIsUploading(true)
+          setUploadProgress(0)
+          const result = await campaignAssetService.upload(draft.assetFile, uid, (pct) => {
+            setUploadProgress(pct)
+          })
+          assetUrl = result.downloadUrl
+          storagePath = result.storagePath
+          uploadedAssetRef.current = { assetUrl, storagePath }
+          setIsUploading(false)
+        }
       }
 
       // Build CampaignData: strip the File object (not Firestore-safe), substitute assetUrl.
@@ -129,13 +163,18 @@ export function useCreateCampaign() {
           await processAd({ campaignId: createdCampaign.id, storagePath })
           
           // Wait for Mux processing to complete (up to 90 seconds)
-          // The waitForMuxProcessing utility resolves when either:
-          // 1. muxPlaybackUrl is available (success)
-          // 2. muxStatus === 'errored' (failure) 
-          // 3. 90 second timeout (fail-safe)
-          await waitForMuxProcessing(createdCampaign.id)
-          
+          const muxOutcome = await waitForMuxProcessing(createdCampaign.id)
           setProcessingStatus(null)
+
+          if (muxOutcome === 'errored') {
+            setSubmitError('Video processing failed. Please try again or use a different file.')
+            return
+          }
+          if (muxOutcome === 'timeout') {
+            setSubmitError('Video processing timed out. Please try again.')
+            return
+          }
+          // muxOutcome === 'ready' — fall through to setSubmitted(true)
         } catch (muxError) {
           setProcessingStatus(null)
           setIsUploading(false)
@@ -165,6 +204,7 @@ export function useCreateCampaign() {
     setIsUploading(false)
     setUploadProgress(0)
     setProcessingStatus(null)
+    uploadedAssetRef.current = null
   }, [])
 
   return { 
