@@ -24,10 +24,13 @@ function waitForMuxProcessing(campaignId: string): Promise<MuxOutcome> {
   return new Promise((resolve) => {
     let unsub: () => void = () => {};
 
+    // Server-side timeout is 540 s (~9 min). Give the client 8 minutes so
+    // HDR→SDR transcode + Mux ingest can complete before we give up.
+    // Previously 90 s — too short for large/HDR iPhone videos.
     const timeout = setTimeout(() => {
       unsub();
       resolve('timeout');
-    }, 90_000);
+    }, 480_000); // 8 minutes
 
     unsub = onSnapshot(
       doc(db, 'ads_campaigns', campaignId),
@@ -84,6 +87,10 @@ export function useCreateCampaign() {
   // Cache the upload result so retrying submit does not re-upload the same file.
   // Cleared when the user selects a new file or calls reset().
   const uploadedAssetRef = useRef<{ assetUrl: string; storagePath: string } | null>(null)
+
+  // Cache the created campaign ID so retrying submit (e.g. after a Mux failure)
+  // does not write a second Firestore document.  Cleared only on reset().
+  const createdCampaignRef = useRef<{ id: string } | null>(null)
 
   const patch = useCallback(<K extends keyof CampaignDraft>(key: K, value: CampaignDraft[K]) => {
     // When the user picks a new asset file, invalidate the cached upload result
@@ -149,7 +156,15 @@ export function useCreateCampaign() {
         assetStoragePath: storagePath ?? undefined,
         userEmail: user?.email ?? '',
       }
-      const createdCampaign = await campaignRepository.create(campaignData, uid)
+      // Idempotent create: skip if a previous attempt already wrote the doc.
+      // This prevents duplicate Firestore documents when Mux fails and the user retries.
+      let createdCampaign: { id: string }
+      if (createdCampaignRef.current) {
+        createdCampaign = createdCampaignRef.current
+      } else {
+        createdCampaign = await campaignRepository.create(campaignData, uid)
+        createdCampaignRef.current = createdCampaign
+      }
 
       // Trigger Mux transcoding for video_feed campaigns and wait for completion
       // CRITICAL: Only campaigns with working Mux URLs should be marked as submitted
@@ -157,7 +172,7 @@ export function useCreateCampaign() {
         const processAd = httpsCallable(functions, 'processAdVideoWithMux')
         
         try {
-          setProcessingStatus('Processing video...')
+          setProcessingStatus('Processing video… this may take a few minutes for large or HDR files. Please keep this page open.')
           
           // Trigger Mux processing
           await processAd({ campaignId: createdCampaign.id, storagePath })
@@ -167,11 +182,11 @@ export function useCreateCampaign() {
           setProcessingStatus(null)
 
           if (muxOutcome === 'errored') {
-            setSubmitError('Video processing failed. Please try again or use a different file.')
+            setSubmitError('Video processing failed. Your campaign was saved — click Submit again to retry video processing.')
             return
           }
           if (muxOutcome === 'timeout') {
-            setSubmitError('Video processing timed out. Please try again.')
+            setSubmitError('Video processing is taking longer than expected. Your campaign was saved — click Submit again to check the status.')
             return
           }
           // muxOutcome === 'ready' — fall through to setSubmitted(true)
@@ -180,7 +195,7 @@ export function useCreateCampaign() {
           setIsUploading(false)
           setUploadProgress(0)
           const muxMessage = muxError instanceof Error ? muxError.message : 'Video processing failed - please try a different format'
-          setSubmitError(muxMessage)
+          setSubmitError(`${muxMessage}. Your campaign was saved — click Submit again to retry.`)
           return // Don't mark as submitted if Mux processing failed
         }
       }
@@ -205,6 +220,7 @@ export function useCreateCampaign() {
     setUploadProgress(0)
     setProcessingStatus(null)
     uploadedAssetRef.current = null
+    createdCampaignRef.current = null
   }, [])
 
   return { 

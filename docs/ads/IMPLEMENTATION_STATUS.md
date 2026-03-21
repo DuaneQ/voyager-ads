@@ -1,8 +1,8 @@
 # TravalPass Ads — Implementation Status
 
-> Last updated: 2026-03-02  
+> Last updated: 2026-03-21  
 > Project: `voyager-ads` (React + TypeScript + Vite) + `voyager-RN` (Expo) + `voyager-pwa/functions` (Cloud Functions)  
-> Test suite: **626 tests passing** (voyager-ads) · **2386 tests passing** (voyager-RN) | TypeScript: **clean (0 errors)** on all projects
+> Test suite: **701 tests passing** (voyager-ads) · **2402 tests passing** (voyager-RN) · **565 tests passing** (functions) | TypeScript: **clean (0 errors)** on all projects
 
 ---
 
@@ -108,7 +108,7 @@ voyager-RN (Expo — iOS + Android)
 
 | Area | Status | Notes |
 |------|--------|-------|
-| `waitForMuxProcessing` in `useVideoUpload` | ✅ Done | Single `onSnapshot` listener; self-cancels when status = `ready` or `errored`; 90-second hard timeout |
+| `waitForMuxProcessing` in `useVideoUpload` | ✅ Done | Single `onSnapshot` listener; self-cancels when status = `ready` or `errored`; **480-second (8 min) hard timeout** — extended from 90s on 2026-03-21; iPhone HDR→SDR transcode can take up to 9 min |
 
 ### ✅ voyager-RN (mobile) — Consumer Ad Delivery
 
@@ -120,8 +120,11 @@ voyager-RN (Expo — iOS + Android)
 | `useAdFrequency` hook | ✅ Done | `src/hooks/ads/useAdFrequency.ts` — `FIRST_AD_AFTER = 3`, `AD_INTERVAL = 5`. Produces mixed content+ad array; first ad appears at mixed-feed index 4 (5th slot overall), then every 5 content items. 24h AsyncStorage frequency cap per user×campaign. |
 | `useAdTracking` hook | ✅ Done | `src/hooks/ads/useAdTracking.ts` — 1s IAB viewability timer, buffers impression/click events in memory, flushes batch to `logAdEvents` every 30s or on unmount. Exposes `getSeenCampaignIds()` for cross-session deduplication. |
 | VideoFeedPage ad interleaving | ✅ Done | `src/pages/VideoFeedPage.tsx` — splices ads at index 4, 9, 14… in video feed. Renders `AdCard` component with `VideoAd` component wired to tracking hooks. |
+| VideoFeedPage double-fetch fix | ✅ Done 2026-03-21 | `buildAdContext` extracted as `useCallback`; 300ms debounce ref (`fetchAdsTimerRef`) in `useEffect` prevents double `selectAds` call when `userProfile` and `travelProfile` hooks resolve on the same render cycle. See Phase 2 & 3 Implementation Guide in `AD_DELIVERY_PLAN.md` — apply the same pattern to Itinerary Feed and AI Slot pages. |
+| `applySeenPenalty` extracted & tested | ✅ Done 2026-03-21 | Exported named function from `selectAds.ts`. Returns `rawScore - 5` for seen campaigns, unchanged otherwise. Invariant: unseen score‑0 (0) always beats seen max video_feed score (3−5=−2). 4 unit tests added. |
 | AIItineraryDisplay promotions wiring | ✅ Done | Promotion slots in AI Itinerary detail wired to `useAdDelivery` for `ai_slot` placement. |
 | Web travelProfile race condition fix | ✅ Done 2026-03-02 | On web, Firebase Auth restores the session asynchronously — `currentUser` is null on first render, so `travelProfile` stays null and the dedup key locks in an incomplete `{gender, age}` context. Fix: exposes `loading` from `useTravelPreferences`, adds `travelProfileLoading` to `buildAdContext` deps, and resets `lastAdContextKeyRef` when loading transitions `true → false`. Code verified (TS clean, 4/4 tests pass). **Not yet deployed as app bundle.** |
+| `resetDailyBudgets` scheduled function | ✅ Done 2026-03-21 | New scheduled CF (`5 0 * * *` UTC). Queries `budgetType=='daily' AND status in ['active','paused']`. Resets `budgetCents = Math.round(budgetAmount * 100)`. Re-activates paused campaigns that had budget restored. Skips zero/null `budgetAmount`. 7 unit tests passing. Exported from `index.ts`. **Not yet deployed to production.** |
 
 ---
 
@@ -387,9 +390,10 @@ src/
 
 | Item | Details |
 |------|---------|
-| **Deploy Cloud Functions to production** | `selectAds`, `logAdEvents`, `processAdVideoWithMux` (ownership + bucket fixes), and updated `muxWebhook` routing have been deployed to `mundo1-dev` ✅. Production deployment (`mundo1-1`) still required before ads are live for real users. Run `firebase deploy --only functions --project mundo1-1` from `voyager-pwa/functions/`. |
-| **Deploy voyager-RN app bundle (web travelProfile fix)** | `VideoFeedPage.tsx` race condition fix (2026-03-02) is code-complete and tested but not yet deployed. Rebuild/reload the web hosting bundle to activate. |
-| **Firestore security rules audit** | Verify `ads_campaigns` rules allow `logAdEvents` / `selectAds` service-account writes, and restrict advertiser reads to own docs. |
+| **Deploy Cloud Functions to production** | `selectAds`, `logAdEvents`, `processAdVideoWithMux`, `resetDailyBudgets` (new — daily budget reset), and updated `muxWebhook` routing have been deployed to `mundo1-dev` ✅. Production deployment (`mundo1-1`) still required. Run `firebase deploy --only functions:selectAds,functions:logAdEvents,functions:resetDailyBudgets --project mundo1-1` from `voyager-pwa/functions/`. |
+| **Deploy voyager-RN app bundle** | `VideoFeedPage.tsx` race condition fix (2026-03-02) and double-fetch debounce fix (2026-03-21) are code-complete and tested but not yet deployed as web bundle. Rebuild/reload the web hosting bundle to activate. |
+| **T9 CPC billing E2E test** | CPC test campaigns were deleted during Phase 1 testing. Must recreate via `localhost:5173/create-campaign` (billing=CPC, $5 daily, video_feed, age 18–34), then set `isUnderReview: false`, `status: active`, `budgetCents: 500` in Firestore. Test: tap CTA → `budgetCents` drops 50 cents; set to 50, tap again → 0 cents → `status: paused`. |
+| **Firestore security rules audit** | Verify `ads_campaigns` rules allow `logAdEvents` / `selectAds` / `resetDailyBudgets` service-account writes, and restrict advertiser reads to own docs. |
 
 ### Medium Priority (product completeness)
 
@@ -435,11 +439,23 @@ On web, Firebase Auth restores the auth session asynchronously. `useTravelPrefer
 ### ✅ RESOLVED 2026-03-02 — Ad slot at wrong position (showed at index 5 instead of 4)
 `FIRST_AD_AFTER` was `4`, which placed the first ad at mixed-feed index 5 (6th slot). Changed to `3` so the first ad appears at mixed-feed index 4 (5th slot overall): `c c c c AD c c c c c AD …`. All 17 `useAdFrequency` tests updated and passing.
 
-### ⚠️ OPEN — Android `VideoFeedPage.android.tsx` — same race condition unverified
-The web travelProfile race fix was applied to `VideoFeedPage.tsx`. The Android-specific `VideoFeedPage.android.tsx` uses the same `useTravelPreferences` hook and likely has the same `lastAdContextKeyRef` dedup pattern. Needs review and the same fix before Android ad targeting is reliable.
+### ⚠️ OPEN — Android `VideoFeedPage.android.tsx` — race condition + double-fetch unverified
+The web travelProfile race fix (2026-03-02) and the debounce fix (2026-03-21) have not been applied to `VideoFeedPage.android.tsx`. Must receive the same two changes before Android ad targeting is reliable. See AD_DELIVERY_PLAN.md §16 for the exact patterns.
 
 ### ⚠️ OPEN — `HlsVideoPlayer.tsx` — Unused File
 `src/components/common/HlsVideoPlayer.tsx` was superseded by the phone-frame approach. Safely deletable unless a video lightbox use case arises.
+
+### ✅ RESOLVED 2026-03-21 — Campaign creation duplicate on Mux failure + retry
+When Mux processing failed (or timed out) and the advertiser retried submission, a second Firestore campaign document was being written because `campaignRepository.create()` ran before the Mux step each time. Fixed in `useCreateCampaign.ts` by adding `createdCampaignRef` — a `useRef` that caches the campaign ID across retry attempts. Retry skips `create()` and goes straight to the Mux step.
+
+### ✅ RESOLVED 2026-03-21 — Mux processing timeout too short for HDR iPhone videos
+`waitForMuxProcessing` had a 90-second hard timeout. iPhone HDR→SDR transcode + Mux ingest can take up to 9 minutes, so campaigns were appearing without a `muxPlaybackUrl`. Extended timeout to 480 seconds (8 min) in `voyager-RN/src/hooks/video/useVideoUpload.ts`. Error message now reads: "Your campaign was saved — click Submit again to retry." Processing message: "Processing video… this may take a few minutes for large or HDR files."
+
+### ✅ RESOLVED 2026-03-21 — Double `selectAds` call on feed load
+When both `useUserProfile` and `useTravelPreferences` resolved close together (same render cycle), `VideoFeedPage` fired `fetchVideoAds` twice — wasting a CF invocation and causing a visible logging duplicate. Fixed by: (1) extracting `buildAdContext` as a `useCallback` with precise deps; (2) adding a 300ms debounce via `fetchAdsTimerRef` in the `useEffect`. Must apply the same pattern in Phase 2 (Itinerary Feed) and Phase 3 (AI Slot) pages.
+
+### ✅ RESOLVED 2026-03-21 — Daily budget never reset
+`budgetType: 'daily'` existed in the data model but no code ever reset `budgetCents` at midnight. Implemented `resetDailyBudgets` in `voyager-pwa/functions/src/resetDailyBudgets.ts`: scheduled CF running at 00:05 UTC daily. Re-activates campaigns that were auto-paused by budget exhaustion. 7 unit tests passing. Exported from `index.ts`. Pending production deployment.
 
 ### Raw MP4 Auto-play
 The `else` branch (raw MP4 fallback) previously failed to call `play()` after setting `video.src`. Fixed — all three branches now call `play()`. Tests verify this.
