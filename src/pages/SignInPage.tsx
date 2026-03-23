@@ -142,7 +142,7 @@ const SignInPage: React.FC = () => {
           alignItems: 'center',
           justifyContent: 'center',
           minHeight: '80vh',
-          px: 2,
+          px: 0.8,
         }}
       >
         <Box
