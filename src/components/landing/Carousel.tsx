@@ -14,7 +14,9 @@ type Props = {
 const Carousel: React.FC<Props> = ({ images, interval = 4000 }) => {
   const [index, setIndex] = useState(0)
   // Only load slides that have been shown or are next — reduces initial image payload from all 5 to 2
-  const [revealed, setRevealed] = useState<Set<number>>(() => new Set([0, Math.min(1, images.length - 1)]))
+  const [revealed, setRevealed] = useState<Set<number>>(
+    () => images.length === 0 ? new Set() : new Set([0, Math.min(1, images.length - 1)])
+  )
 
   useEffect(() => {
     if (images.length <= 1) return

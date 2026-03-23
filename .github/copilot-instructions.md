@@ -247,3 +247,25 @@ No unused imports or variables.
 Performance impact is reasonable.
 
 Security considerations have been addressed.
+
+---
+
+## 🚨 NEVER MAKE UNINFORMED CLAIMS — READ THE CODE FIRST 🚨
+
+**ABSOLUTE RULE**: Do NOT make any claim about what code does, what a file contains, what a feature supports, or what is missing UNTIL you have actually read the relevant source files.
+
+**This includes**:
+- Claiming a feature "isn't implemented" without checking the source
+- Describing how something works based on memory or assumptions
+- Summarising what a phase/branch/feature contains without reading it
+- Asserting a bug exists or doesn't exist without reading the code
+- Describing what a function, component, hook, or service does without reading it
+
+**Required behaviour**:
+1. ✅ **Read first, claim second.** Use `grep_search`, `read_file`, or `semantic_search` to verify before stating facts about the codebase.
+2. ✅ **If unsure, say so and ask.** "I'm not sure — let me check" is always better than a confident wrong answer.
+3. ✅ **Qualify uncertain statements.** If you haven't read the code, say "I haven't verified this yet" rather than stating it as fact.
+4. ✅ **When corrected, don't just apologise — immediately read the code** to understand what's actually there before responding further.
+5. ✅ **Cross-project awareness**: This workspace has multiple projects (voyager-RN, voyager-ads, voyager-pwa/functions). Never assume a feature is missing in one project because you haven't looked at the others.
+
+**If you violate this rule, you waste the user's time and erode trust. Read the code. NO EXCEPTIONS.**

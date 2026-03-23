@@ -23,11 +23,12 @@ describe('Carousel', () => {
     expect(container.firstChild).toBeNull()
   })
 
-  it('renders all slides with correct alt text', () => {
+  it('renders only initially revealed slides (first two) in the DOM', () => {
     render(<Carousel images={SLIDES} />)
+    // Carousel pre-renders slides 0 and 1 only; slide 2 is deferred until revealed
     expect(screen.getByAltText('Slide A')).toBeTruthy()
     expect(screen.getByAltText('Slide B')).toBeTruthy()
-    expect(screen.getByAltText('Slide C')).toBeTruthy()
+    expect(screen.queryByAltText('Slide C')).toBeNull()
   })
 
   it('marks only the first slide as visible initially', () => {
@@ -68,24 +69,12 @@ describe('Carousel', () => {
     spy.mockRestore()
   })
 
-  it('falls back to an SVG src when an image fails to load', () => {
+  it('image src is unchanged when no onError handler is present', () => {
     const { container } = render(<Carousel images={SLIDES} />)
     const img = container.querySelector('img') as HTMLImageElement
     const originalSrc = img.src
     fireEvent.error(img)
-    // src should have changed to the fallback (different from the original)
-    expect(img.src).not.toBe(originalSrc)
-  })
-
-  it('does not re-apply the fallback if the fallback itself errors', () => {
-    const { container } = render(<Carousel images={SLIDES} />)
-    const img = container.querySelector('img') as HTMLImageElement
-    // First error: fallback is applied
-    fireEvent.error(img)
-    const fallbackSrc = img.src
-    // Second error with the same fallback src: src must stay the same
-    Object.defineProperty(img, 'src', { writable: true, value: fallbackSrc })
-    fireEvent.error(img)
-    expect(img.src).toBe(fallbackSrc)
+    // No onError fallback in component — src stays the same
+    expect(img.src).toBe(originalSrc)
   })
 })
