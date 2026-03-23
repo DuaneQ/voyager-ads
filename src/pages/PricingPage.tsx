@@ -23,7 +23,15 @@ const PricingPage: React.FC = () => {
         <link rel="canonical" href="https://travalpass-ads.web.app/pricing" />
       </Helmet>
       <Nav />
-      <Container maxWidth="md" sx={{ py: 4 }}>
+      <Container 
+        maxWidth={false} 
+        sx={{ 
+          maxWidth: { xs: '100%', sm: 768, md: 960, lg: 1400, xl: 1600 },
+          mx: 'auto',
+          px: { xs: 0.8, sm: 0.8, md: 0.6, lg: 0.4, xl: 0.2 },
+          py: 4 
+        }}
+      >
         <Typography variant="h1" gutterBottom>Pricing</Typography>
         <Typography variant="body1" sx={{ mb: 3 }}>
           Current prices per placement are shown below.

@@ -20,7 +20,7 @@ const EditCampaignPage: React.FC = () => {
     return (
       <>
         <Nav />
-        <Box sx={{ maxWidth: 800, mx: 'auto', px: 3, py: 8, textAlign: 'center' }}>
+        <Box sx={{ maxWidth: 800, mx: 'auto', px: 1.2, py: 8, textAlign: 'center' }}>
           <Typography variant="h5" gutterBottom>Campaign not found</Typography>
           <Button
             variant="outlined"
@@ -39,7 +39,7 @@ const EditCampaignPage: React.FC = () => {
       <Nav />
       <Box
         component="main"
-        sx={{ maxWidth: 760, mx: 'auto', px: 3, py: 5 }}
+        sx={{ maxWidth: 760, mx: 'auto', px: 1.2, py: 5 }}
         aria-label="Edit campaign"
       >
         <Button

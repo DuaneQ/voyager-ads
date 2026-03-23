@@ -51,7 +51,12 @@ const DashboardPage: React.FC = () => {
   return (
     <>
       <Nav />
-      <Box component="main" sx={{ maxWidth: 1200, mx: 'auto', px: 3, py: 5 }}>
+      <Box component="main" sx={{ 
+        maxWidth: { xs: '100%', sm: 960, md: 1200, lg: 1400, xl: 2000 }, 
+        mx: 'auto', 
+        px: { xs: 0.8, sm: 0.8, md: 0.6, lg: 0.4, xl: 0.2 }, 
+        py: 5 
+      }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
           <Typography variant="h2" fontWeight={700}>
             My Campaigns

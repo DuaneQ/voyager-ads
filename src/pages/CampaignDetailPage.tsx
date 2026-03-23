@@ -92,7 +92,13 @@ const CampaignDetailPage: React.FC = () => {
     return (
       <>
         <Nav />
-        <Box sx={{ maxWidth: 800, mx: 'auto', px: 3, py: 8, textAlign: 'center' }}>
+        <Box sx={{ 
+          maxWidth: { xs: '100%', sm: 600, md: 800 }, 
+          mx: 'auto', 
+          px: { xs: 0.8, sm: 1.2 }, 
+          py: 8, 
+          textAlign: 'center' 
+        }}>
           <Typography variant="h5" gutterBottom>Campaign not found</Typography>
           <Typography color="text.secondary" mb={3}>
             This campaign may have been removed or you don't have access to it.
@@ -115,7 +121,12 @@ const CampaignDetailPage: React.FC = () => {
       <Nav />
       <Box
         component="main"
-        sx={{ maxWidth: 1200, mx: 'auto', px: 3, py: 5 }}
+        sx={{ 
+          maxWidth: { xs: '100%', sm: 960, md: 1200, lg: 1400, xl: 1600 }, 
+          mx: 'auto', 
+          px: { xs: 0.8, sm: 0.8, md: 0.6, lg: 0.4, xl: 0.2 }, 
+          py: 5 
+        }}
         aria-label={`Campaign detail: ${campaign.name}`}
       >
         {/* ── Back link ── */}
