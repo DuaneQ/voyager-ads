@@ -5,6 +5,7 @@ export type BudgetType = 'daily' | 'lifetime'
 export type BillingModel = 'cpm' | 'cpc'
 export type CreativeType = 'image' | 'video'
 export type BusinessType = 'restaurant' | 'hotel' | 'tour' | 'experience' | 'transport' | 'shop' | 'activity' | 'other'
+export type PaymentStatus = 'unpaid' | 'checkout_created' | 'paid' | 'payment_failed'
 
 export interface CampaignDraft {
   // Step 1 — Details
@@ -133,6 +134,14 @@ export interface Campaign extends CampaignData {
   id: string
   uid: string          // Firebase Auth UID of the owning advertiser
   status: CampaignStatus
+  paymentStatus?: PaymentStatus
+  paymentRequiredCents?: number
+  paymentPaidCents?: number
+  paymentDiscountCents?: number
+  paymentCurrency?: string
+  paymentSessionId?: string
+  paymentPromoCode?: string
+  paymentCompletedAt?: string
   /**
    * Set to `true` on creation. An admin must set it to `false` to allow the
    * campaign to go live. Firestore rules prevent clients from clearing this flag.

@@ -19,8 +19,68 @@ import StepTargeting from './StepTargeting'
 import StepBudget from './StepBudget'
 import StepReview from './StepReview'
 
+const WIZARD_SCALE_SX = {
+  '& .MuiStepLabel-label': {
+    fontSize: { xs: '1.15rem', md: '1.35rem' },
+    fontWeight: 600,
+  },
+  '& .MuiStepIcon-root': {
+    fontSize: { xs: '1.55rem', md: '1.85rem' },
+  },
+  '& .MuiTypography-body2': {
+    fontSize: { xs: '1.1rem', md: '1.35rem' },
+    lineHeight: 1.55,
+  },
+  '& .MuiTypography-caption': {
+    fontSize: { xs: '0.95rem', md: '1.15rem' },
+    lineHeight: 1.5,
+  },
+  '& .MuiFormLabel-root': {
+    fontSize: { xs: '1rem', md: '1.25rem' },
+  },
+  '& .MuiInputBase-root': {
+    minHeight: { xs: 64, md: 82 },
+    fontSize: { xs: '1.12rem', md: '1.4rem' },
+  },
+  '& .MuiInputBase-input': {
+    fontSize: { xs: '1.12rem', md: '1.4rem' },
+    py: { xs: 1.5, md: 2 },
+  },
+  '& .MuiSelect-select': {
+    fontSize: { xs: '1.12rem', md: '1.4rem' },
+  },
+  '& .MuiFormHelperText-root': {
+    fontSize: { xs: '0.95rem', md: '1.15rem' },
+    lineHeight: 1.45,
+  },
+  '& .MuiButton-root': {
+    fontSize: { xs: '1.08rem', md: '1.35rem' },
+    px: { xs: 2.4, md: 3.4 },
+    py: { xs: 1.15, md: 1.55 },
+    minHeight: { xs: 48, md: 60 },
+    borderRadius: 2,
+  },
+  '& .MuiChip-root': {
+    fontSize: { xs: '1rem', md: '1.2rem' },
+    height: { xs: 36, md: 42 },
+  },
+}
+
 const CampaignWizard: React.FC = () => {
-  const { step, draft, patch, next, back, submit, reset, submitted, submitError, isUploading, uploadProgress } = useCreateCampaign()
+  const {
+    step,
+    draft,
+    patch,
+    next,
+    back,
+    submit,
+    reset,
+    submitted,
+    submittedCampaignId,
+    submitError,
+    isUploading,
+    uploadProgress,
+  } = useCreateCampaign()
   const { showError } = useAppAlert()
   const navigate = useNavigate()
   const isLast = step === STEP_LABELS.length - 1
@@ -39,16 +99,17 @@ const CampaignWizard: React.FC = () => {
     if (submitError) showError(submitError)
   }, [submitError, showError])
 
-  // Redirect to dashboard after successful submission, carrying a flag to trigger the success banner
+  // Redirect to billing after successful submission so campaign funding is the immediate next action.
   useEffect(() => {
-    if (submitted) {
+    if (submitted && submittedCampaignId) {
+      const campaignId = submittedCampaignId
       reset()
-      navigate('/dashboard', { state: { submitted: true } })
+      navigate(`/billing/${campaignId}`, { state: { submitted: true } })
     }
-  }, [submitted, navigate, reset])
+  }, [submitted, submittedCampaignId, navigate, reset])
 
   return (
-    <Box data-testid="campaign-wizard">
+    <Box data-testid="campaign-wizard" sx={WIZARD_SCALE_SX}>
       {fillTestData && (
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
           <Tooltip title="Fills all wizard steps with realistic test data (dev only)">
@@ -72,7 +133,7 @@ const CampaignWizard: React.FC = () => {
         ))}
       </Stepper>
 
-      <Box sx={{ maxWidth: 600, mx: 'auto' }}>
+      <Box sx={{ maxWidth: 900, mx: 'auto' }}>
         <Box role="group" aria-label={`Step ${step + 1} of ${STEP_LABELS.length}: ${STEP_LABELS[step]}`}>
           {step === 0 && <StepDetails draft={draft} patch={patch} />}
           {step === 1 && <StepCreative draft={draft} patch={patch} />}
