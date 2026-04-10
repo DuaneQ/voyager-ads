@@ -65,10 +65,24 @@ function formatCurrency(cents: number | undefined, currency = 'usd'): string {
     return 'N/A'
   }
 
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currency.toUpperCase(),
-  }).format(cents / 100)
+  const normalizedCurrency = typeof currency === 'string' ? currency.trim().toUpperCase() : 'USD'
+  const safeCurrency = /^[A-Z]{3}$/.test(normalizedCurrency) ? normalizedCurrency : 'USD'
+
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: safeCurrency,
+    }).format(cents / 100)
+  } catch {
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+      }).format(cents / 100)
+    } catch {
+      return 'N/A'
+    }
+  }
 }
 
 function parseBudgetAmountCents(budgetAmount: string | undefined): number {

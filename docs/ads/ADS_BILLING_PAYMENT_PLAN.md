@@ -44,7 +44,7 @@ This plan intentionally reuses as much existing Stripe and ads budget logic as p
 
 ### 3.3 Ads UI baseline
 
-1. No dedicated Billing page route exists in voyager-ads/src/App.tsx.
+1. At the time this baseline was captured, no dedicated Billing page route existed in voyager-ads/src/App.tsx; this is now superseded by the /billing/:id route.
 2. Campaign wizard captures budgetAmount and billingModel but does not trigger dedicated Ads payment collection flow.
 
 ---

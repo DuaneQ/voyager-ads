@@ -157,4 +157,21 @@ describe('BillingPage', () => {
     expect(screen.getByRole('button', { name: /campaign funded/i })).toBeDisabled()
     expect(screen.getByText(/payment confirmed/i)).toBeInTheDocument()
   })
+
+  it('falls back safely when payment currency is invalid', () => {
+    vi.mocked(useCampaigns).mockReturnValue({
+      campaigns: [{
+        ...baseCampaign,
+        paymentCurrency: 'not_a_currency',
+      }],
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+    })
+
+    renderPage()
+
+    // Should render with fallback formatting instead of crashing.
+    expect(screen.getByText('$500.00')).toBeInTheDocument()
+  })
 })
