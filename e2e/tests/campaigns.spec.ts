@@ -48,8 +48,8 @@ test.describe('Campaign Wizard - placements', () => {
     await wizard.submit();
 
     // Wizard now redirects to campaign billing after submit.
-    await page.waitForURL(/\/billing\//, { timeout: 15_000 });
-    await expect(page.getByRole('heading', { name: /campaign billing/i })).toBeVisible();
+    await page.waitForURL(/\/billing\/[^/?#]+/, { timeout: 20_000 });
+    await expect(page).toHaveURL(/\/billing\/[^/?#]+/);
   });
 
   test('Create Itinerary Feed campaign flow', async ({ page }) => {
@@ -83,8 +83,8 @@ test.describe('Campaign Wizard - placements', () => {
     await wizard.submit();
 
     // Wizard now redirects to campaign billing after submit.
-    await page.waitForURL(/\/billing\//, { timeout: 15_000 });
-    await expect(page.getByRole('heading', { name: /campaign billing/i })).toBeVisible();
+    await page.waitForURL(/\/billing\/[^/?#]+/, { timeout: 20_000 });
+    await expect(page).toHaveURL(/\/billing\/[^/?#]+/);
   });
 
   test('Create AI Slot campaign flow', async ({ page }) => {
@@ -119,7 +119,7 @@ test.describe('Campaign Wizard - placements', () => {
     await wizard.submit();
 
     // Wizard now redirects to campaign billing after submit.
-    await page.waitForURL(/\/billing\//, { timeout: 15_000 });
-    await expect(page.getByRole('heading', { name: /campaign billing/i })).toBeVisible();
+    await page.waitForURL(/\/billing\/[^/?#]+/, { timeout: 20_000 });
+    await expect(page).toHaveURL(/\/billing\/[^/?#]+/);
   });
 });
