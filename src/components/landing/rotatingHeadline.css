@@ -1,27 +1,30 @@
 .rotating-headline h1 {
-  font-size: 2.2rem;
-  line-height: 1.12;
-  margin: 0 0 1rem 0;
+  font-size: clamp(4.1rem, 7.2vw, 7.8rem);
+  line-height: 1.02;
+  margin: 0;
   text-align: center;
   color: #0f172a;
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  max-width: 1360px;
 }
 .rotating-headline .phrase {
-.rotating-headline .phrase {
   display: block;
-  font-weight: 700;
+  font-weight: 800;
   color: #0f172a;
   animation: fadeIn 600ms ease;
 }
 .rotating-headline .suffix {
   display: block;
-  font-weight: 600;
+  font-weight: 700;
   color: #475569;
-  margin-top: 0.25rem;
+  margin-top: 0.7rem;
 }
 
 @media (min-width: 880px) {
-  .rotating-headline h1 { font-size: 3.2rem }
+  .rotating-headline h1 {
+    text-align: center;
+  }
 }
 
 @keyframes fadeIn {

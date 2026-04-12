@@ -26,7 +26,7 @@ const Products: React.FC = () => {
 
   return (
     <>
-      <section id="products" className="products-section" aria-label="Products and pricing">
+      <section id="products" className="products-section products-page-scale" aria-label="Products and pricing">
       <h2 className="products-title">Products</h2>
 
       <div className="products-grid">
@@ -121,7 +121,7 @@ const Products: React.FC = () => {
         </div>
       </div>
       </section>
-      <div style={{ padding: '0 2rem 2rem', maxWidth: 980, margin: '0 auto' }}>
+      <div className="products-page-scale" style={{ padding: '0 2rem 2rem', maxWidth: 980, margin: '0 auto' }}>
         <p style={{ marginTop: '1rem' }}>See full pricing and example rates on the <Link to="/pricing">Pricing</Link> page.</p>
       </div>
     </>

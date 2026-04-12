@@ -47,9 +47,9 @@ test.describe('Campaign Wizard - placements', () => {
     await wizard.agreePolicy();
     await wizard.submit();
 
-    // Wizard redirects to /dashboard after submit; success banner confirms submission.
-    await page.waitForURL(/\/dashboard/, { timeout: 15_000 });
-    await expect(page.locator('[role="alert"]').first()).toContainText('Campaign submitted');
+    // Wizard now redirects to campaign billing after submit.
+    await page.waitForURL(/\/billing\/[^/?#]+/, { timeout: 20_000 });
+    await expect(page).toHaveURL(/\/billing\/[^/?#]+/);
   });
 
   test('Create Itinerary Feed campaign flow', async ({ page }) => {
@@ -82,9 +82,9 @@ test.describe('Campaign Wizard - placements', () => {
     await wizard.agreePolicy();
     await wizard.submit();
 
-    // Wizard redirects to /dashboard after submit; success banner confirms submission.
-    await page.waitForURL(/\/dashboard/, { timeout: 15_000 });
-    await expect(page.locator('[role="alert"]').first()).toContainText('Campaign submitted');
+    // Wizard now redirects to campaign billing after submit.
+    await page.waitForURL(/\/billing\/[^/?#]+/, { timeout: 20_000 });
+    await expect(page).toHaveURL(/\/billing\/[^/?#]+/);
   });
 
   test('Create AI Slot campaign flow', async ({ page }) => {
@@ -118,8 +118,8 @@ test.describe('Campaign Wizard - placements', () => {
     await wizard.agreePolicy();
     await wizard.submit();
 
-    // Wizard redirects to /dashboard after submit; success banner confirms submission.
-    await page.waitForURL(/\/dashboard/, { timeout: 15_000 });
-    await expect(page.locator('[role="alert"]').first()).toContainText('Campaign submitted');
+    // Wizard now redirects to campaign billing after submit.
+    await page.waitForURL(/\/billing\/[^/?#]+/, { timeout: 20_000 });
+    await expect(page).toHaveURL(/\/billing\/[^/?#]+/);
   });
 });

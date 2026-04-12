@@ -15,6 +15,7 @@ const CreateCampaignPage = lazy(() => import('./pages/CreateCampaignPage'))
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
 const CampaignDetailPage = lazy(() => import('./pages/CampaignDetailPage'))
 const EditCampaignPage = lazy(() => import('./pages/EditCampaignPage'))
+const BillingPage = lazy(() => import('./pages/BillingPage'))
 
 function App() {
   const init = useAuthStore((s) => s.init)
@@ -71,6 +72,14 @@ function App() {
           element={
             <ProtectedRoute>
               <EditCampaignPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/billing/:id"
+          element={
+            <ProtectedRoute>
+              <BillingPage />
             </ProtectedRoute>
           }
         />

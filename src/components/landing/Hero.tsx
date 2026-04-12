@@ -61,7 +61,7 @@ const Hero: React.FC<Props> = ({
           />
         </div>
       </div>
-      <p style={{ textAlign: 'center', marginTop: '1rem', color: 'rgba(33,53,71,0.8)' }}>
+      <p className="hero-kicker">
         Whatever your business goal — bookings, experiences, or hotel stays — drive better results with TravalPass Ads.
       </p>
     </section>

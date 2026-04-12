@@ -79,6 +79,7 @@ export function useCreateCampaign() {
   const [step, setStep] = useState(0) // 0-indexed internally
   const [draft, setDraft] = useState<CampaignDraft>(EMPTY_DRAFT)
   const [submitted, setSubmitted] = useState(false)
+  const [submittedCampaignId, setSubmittedCampaignId] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
@@ -200,6 +201,7 @@ export function useCreateCampaign() {
         }
       }
 
+      setSubmittedCampaignId(createdCampaign.id)
       setSubmitted(true)
     } catch (err) {
       setIsUploading(false)
@@ -215,6 +217,7 @@ export function useCreateCampaign() {
     setDraft(EMPTY_DRAFT)
     setStep(0)
     setSubmitted(false)
+    setSubmittedCampaignId(null)
     setSubmitError(null)
     setIsUploading(false)
     setUploadProgress(0)
@@ -233,6 +236,7 @@ export function useCreateCampaign() {
     submit, 
     reset, 
     submitted, 
+    submittedCampaignId,
     submitError, 
     isUploading, 
     uploadProgress,

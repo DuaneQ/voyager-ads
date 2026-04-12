@@ -17,6 +17,7 @@ import StepCreative from './StepCreative'
 import StepTargeting from './StepTargeting'
 import StepBudget from './StepBudget'
 import StepReview from './StepReview'
+import { WIZARD_SCALE_SX } from './wizardScaleSx'
 
 interface Props {
   campaignId: string
@@ -98,7 +99,7 @@ const EditCampaignWizard: React.FC<Props> = ({ campaignId }) => {
   }
 
   return (
-    <Box data-testid="edit-campaign-wizard">
+    <Box data-testid="edit-campaign-wizard" sx={WIZARD_SCALE_SX}>
       {campaign.reviewNote && (
         <Alert severity="warning" sx={{ mb: 3 }}>
           <strong>Review note:</strong> {campaign.reviewNote}
@@ -113,7 +114,7 @@ const EditCampaignWizard: React.FC<Props> = ({ campaignId }) => {
         ))}
       </Stepper>
 
-      <Box sx={{ maxWidth: 600, mx: 'auto' }}>
+      <Box sx={{ maxWidth: 900, mx: 'auto' }}>
         <Box role="group" aria-label={`Step ${step + 1} of ${STEP_LABELS.length}: ${STEP_LABELS[step]}`}>
           {step === 0 && <StepDetails draft={draft} patch={patch} />}
           {step === 1 && <StepCreative draft={draft} patch={patch} />}

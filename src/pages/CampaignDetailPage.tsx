@@ -8,6 +8,7 @@ import Divider from '@mui/material/Divider'
 import Typography from '@mui/material/Typography'
 import Alert from '@mui/material/Alert'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import CreditCardOutlinedIcon from '@mui/icons-material/CreditCardOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import PauseCircleOutlinedIcon from '@mui/icons-material/PauseCircleOutlined'
 import PlayCircleOutlinedIcon from '@mui/icons-material/PlayCircleOutlined'
@@ -23,11 +24,32 @@ import { useAppAlert } from '../context/AppAlertContext'
 import type { Placement } from '../types/campaign'
 import { displayDate } from '../utils/dateUtils'
 import { formatBudgetRemaining, budgetRemainingPercent } from '../utils/budgetUtils'
+import type { PaymentStatus } from '../types/campaign'
 
 const PLACEMENT_LABELS: Record<Placement, string> = {
   video_feed:     'Video Feed',
   itinerary_feed: 'Itinerary Feed',
   ai_slot:        'AI Slots',
+}
+
+const PAYMENT_LABELS: Record<PaymentStatus, string> = {
+  unpaid: 'Payment Unpaid',
+  checkout_created: 'Checkout Started',
+  paid: 'Payment Paid',
+  payment_failed: 'Payment Failed',
+}
+
+function paymentChipColor(status: PaymentStatus | undefined): 'default' | 'success' | 'warning' | 'error' {
+  switch (status) {
+    case 'paid':
+      return 'success'
+    case 'checkout_created':
+      return 'warning'
+    case 'payment_failed':
+      return 'error'
+    default:
+      return 'default'
+  }
 }
 
 // Re-use the centralized displayDate from dateUtils rather than inlining
@@ -152,8 +174,19 @@ const CampaignDetailPage: React.FC = () => {
                 isUnderReview={campaign.isUnderReview}
               />
             </Box>
-            {!campaign.isUnderReview && campaign.status !== 'completed' && (
-              <Box sx={{ display: 'flex', gap: 1 }}>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              <Button
+                component={RouterLink}
+                to={`/billing/${campaign.id}`}
+                variant={campaign.paymentStatus === 'paid' ? 'outlined' : 'contained'}
+                size="small"
+                startIcon={<CreditCardOutlinedIcon />}
+                aria-label={`Open billing for campaign: ${campaign.name}`}
+              >
+                {campaign.paymentStatus === 'paid' ? 'Billing' : 'Pay campaign'}
+              </Button>
+              {!campaign.isUnderReview && campaign.status !== 'completed' && (
+                <>
                 <Button
                   variant="outlined"
                   size="small"
@@ -178,8 +211,9 @@ const CampaignDetailPage: React.FC = () => {
                 >
                   Edit campaign
                 </Button>
-              </Box>
-            )}
+                </>
+              )}
+            </Box>
           </Box>
           {statusError && (
             <Alert severity="error" sx={{ mt: 1 }}>{statusError}</Alert>
@@ -201,6 +235,12 @@ const CampaignDetailPage: React.FC = () => {
               label={formatBudget(campaign.budgetAmount, campaign.budgetType)}
               size="small"
               variant="outlined"
+            />
+            <Chip
+              label={PAYMENT_LABELS[campaign.paymentStatus ?? 'unpaid']}
+              size="small"
+              variant="outlined"
+              color={paymentChipColor(campaign.paymentStatus)}
             />
             {typeof campaign.budgetCents === 'number' && (
               <Chip

@@ -24,8 +24,10 @@ const CreateCampaignPage: React.FC = () => {
           py: 5 
         }}
       >
-        <Typography variant="h1" sx={{ mb: 0.5 }}>Create a campaign</Typography>
-        <Typography color="text.secondary" sx={{ mb: 4 }}>
+        <Typography variant="h1" sx={{ mb: 0.75, fontSize: { xs: '3rem', md: '4.4rem' }, lineHeight: 1.08 }}>
+          Create a campaign
+        </Typography>
+        <Typography color="text.secondary" sx={{ mb: 4, fontSize: { xs: '1.2rem', md: '1.75rem' }, lineHeight: 1.5 }}>
           Reach travelers who are actively planning trips.
         </Typography>
         <CampaignWizard />

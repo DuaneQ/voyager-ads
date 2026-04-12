@@ -135,7 +135,7 @@ describe('CampaignWizard', () => {
     expect(screen.getByRole('button', { name: /Submit campaign/i })).toBeInTheDocument()
   })
 
-  it('navigates to /dashboard with submitted state after clicking Submit', async () => {
+  it('navigates to the campaign billing page with submitted state after clicking Submit', async () => {
     renderWizard()
     // Navigate to last step
     fireEvent.change(screen.getByLabelText(/Campaign name/i), { target: { value: 'Ad Campaign' } })
@@ -155,9 +155,9 @@ describe('CampaignWizard', () => {
     // Agree to policy to enable submit
     fireEvent.click(screen.getByRole('checkbox'))
     fireEvent.click(screen.getByRole('button', { name: /Submit campaign/i }))
-    // Should redirect to dashboard with submitted flag
+    // Should redirect to billing for the newly created campaign.
     await vi.waitFor(() =>
-      expect(mockNavigate).toHaveBeenCalledWith('/dashboard', { state: { submitted: true } })
+      expect(mockNavigate).toHaveBeenCalledWith('/billing/new-campaign', { state: { submitted: true } })
     )
   })
 
@@ -172,6 +172,7 @@ describe('CampaignWizard', () => {
       submit: vi.fn(),
       reset: vi.fn(),
       submitted: false,
+      submittedCampaignId: null,
       submitError: 'Network error — please try again.',
     })
 

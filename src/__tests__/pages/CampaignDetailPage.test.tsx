@@ -180,6 +180,20 @@ describe('CampaignDetailPage', () => {
     expect(screen.getByTestId('status-chip')).toHaveTextContent('active')
   })
 
+  it('renders a billing link for the campaign', () => {
+    vi.mocked(useCampaigns).mockReturnValue({
+      campaigns: [baseCampaign],
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+    })
+    renderPage()
+    expect(screen.getByRole('link', { name: /open billing for campaign: summer promo/i })).toHaveAttribute(
+      'href',
+      '/billing/camp-1',
+    )
+  })
+
   it('renders placement chip label', () => {
     vi.mocked(useCampaigns).mockReturnValue({
       campaigns: [baseCampaign],

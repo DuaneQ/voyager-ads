@@ -18,9 +18,23 @@ import StepCreative from './StepCreative'
 import StepTargeting from './StepTargeting'
 import StepBudget from './StepBudget'
 import StepReview from './StepReview'
+import { WIZARD_SCALE_SX } from './wizardScaleSx'
 
 const CampaignWizard: React.FC = () => {
-  const { step, draft, patch, next, back, submit, reset, submitted, submitError, isUploading, uploadProgress } = useCreateCampaign()
+  const {
+    step,
+    draft,
+    patch,
+    next,
+    back,
+    submit,
+    reset,
+    submitted,
+    submittedCampaignId,
+    submitError,
+    isUploading,
+    uploadProgress,
+  } = useCreateCampaign()
   const { showError } = useAppAlert()
   const navigate = useNavigate()
   const isLast = step === STEP_LABELS.length - 1
@@ -39,16 +53,17 @@ const CampaignWizard: React.FC = () => {
     if (submitError) showError(submitError)
   }, [submitError, showError])
 
-  // Redirect to dashboard after successful submission, carrying a flag to trigger the success banner
+  // Redirect to billing after successful submission so campaign funding is the immediate next action.
   useEffect(() => {
-    if (submitted) {
+    if (submitted && submittedCampaignId) {
+      const campaignId = submittedCampaignId
       reset()
-      navigate('/dashboard', { state: { submitted: true } })
+      navigate(`/billing/${campaignId}`, { state: { submitted: true } })
     }
-  }, [submitted, navigate, reset])
+  }, [submitted, submittedCampaignId, navigate, reset])
 
   return (
-    <Box data-testid="campaign-wizard">
+    <Box data-testid="campaign-wizard" sx={WIZARD_SCALE_SX}>
       {fillTestData && (
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
           <Tooltip title="Fills all wizard steps with realistic test data (dev only)">
@@ -72,7 +87,7 @@ const CampaignWizard: React.FC = () => {
         ))}
       </Stepper>
 
-      <Box sx={{ maxWidth: 600, mx: 'auto' }}>
+      <Box sx={{ maxWidth: 900, mx: 'auto' }}>
         <Box role="group" aria-label={`Step ${step + 1} of ${STEP_LABELS.length}: ${STEP_LABELS[step]}`}>
           {step === 0 && <StepDetails draft={draft} patch={patch} />}
           {step === 1 && <StepCreative draft={draft} patch={patch} />}

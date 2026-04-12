@@ -12,15 +12,37 @@ const LandingQuestions: React.FC = () => {
 
   return (
     <>
-      <Box component="section" aria-label="learn more" sx={{ maxWidth: 720, mx: 'auto', px: 2, py: 3 }}>
-        <Typography variant="h3" align="center" gutterBottom>Questions?</Typography>
+      <Box
+        component="section"
+        aria-label="learn more"
+        sx={{
+          maxWidth: 1400,
+          mx: 'auto',
+          px: { xs: 1, md: 2 },
+          py: 3,
+        }}
+      >
+        <Typography
+          variant="h3"
+          align="center"
+          gutterBottom
+          sx={{ fontSize: { xs: '2.4rem', md: '3.1rem' }, lineHeight: 1.1 }}
+        >
+          Questions?
+        </Typography>
         <List disablePadding>
-          <ListItemButton divider onClick={() => setOpen('how')}>
-            <ListItemText primary="How do TravalPass Ads work?" />
+          <ListItemButton divider onClick={() => setOpen('how')} sx={{ py: 1.25 }}>
+            <ListItemText
+              primary="How do TravalPass Ads work?"
+              primaryTypographyProps={{ fontSize: { xs: '1.2rem', md: '1.5rem' }, lineHeight: 1.35 }}
+            />
             <ChevronRightIcon color="action" />
           </ListItemButton>
-          <ListItemButton onClick={() => setOpen('connect')}>
-            <ListItemText primary="How can TravalPass Ads help my business?" />
+          <ListItemButton onClick={() => setOpen('connect')} sx={{ py: 1.25 }}>
+            <ListItemText
+              primary="How can TravalPass Ads help my business?"
+              primaryTypographyProps={{ fontSize: { xs: '1.2rem', md: '1.5rem' }, lineHeight: 1.35 }}
+            />
             <ChevronRightIcon color="action" />
           </ListItemButton>
         </List>

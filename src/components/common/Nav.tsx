@@ -19,35 +19,114 @@ const Nav: React.FC = () => {
 
   return (
     <AppBar position="static" color="transparent" elevation={0} sx={{ borderBottom: '1px solid', borderColor: 'divider' }}>
-      <Toolbar sx={{ justifyContent: 'space-between', maxWidth: 1280, width: '100%', mx: 'auto', px: { xs: 2, sm: 3 } }}>
-        <MuiLink component={RouterLink} to="/" underline="none" sx={{ fontWeight: 700, fontSize: '1.1rem', color: 'text.primary' }}>
+      <Toolbar
+        sx={{
+          justifyContent: 'space-between',
+          maxWidth: 1440,
+          width: '100%',
+          mx: 'auto',
+          px: { xs: 2, sm: 3 },
+          minHeight: { xs: 78, sm: 90 },
+        }}
+      >
+        <MuiLink
+          component={RouterLink}
+          to="/"
+          underline="none"
+          sx={{ fontWeight: 800, fontSize: { xs: '1.35rem', sm: '1.55rem' }, color: 'text.primary' }}
+        >
           TravalPass Ads
         </MuiLink>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <MuiLink component={RouterLink} to="/products" underline="none" color="text.primary">
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.25, sm: 2 } }}>
+          <MuiLink
+            component={RouterLink}
+            to="/products"
+            underline="none"
+            color="text.primary"
+            sx={{ fontSize: { xs: '1rem', sm: '1.14rem' }, fontWeight: 500 }}
+          >
             Products
           </MuiLink>
-          <MuiLink component={RouterLink} to="/pricing" underline="none" color="text.primary">
+          <MuiLink
+            component={RouterLink}
+            to="/pricing"
+            underline="none"
+            color="text.primary"
+            sx={{ fontSize: { xs: '1rem', sm: '1.14rem' }, fontWeight: 500 }}
+          >
             Pricing
           </MuiLink>
           {isInitialized && isAuthenticated ? (
             <>
-              <MuiLink component={RouterLink} to="/dashboard" underline="none" color="text.primary">
+              <MuiLink
+                component={RouterLink}
+                to="/dashboard"
+                underline="none"
+                color="text.primary"
+                sx={{ fontSize: { xs: '1rem', sm: '1.14rem' }, fontWeight: 500 }}
+              >
                 Dashboard
               </MuiLink>
-              <Button variant="outlined" size="small" onClick={handleSignOut}>
+              <Button
+                variant="outlined"
+                size="medium"
+                onClick={handleSignOut}
+                sx={{
+                  px: { xs: 1.6, sm: 2.1 },
+                  py: { xs: 0.75, sm: 0.95 },
+                  borderRadius: 2,
+                  fontSize: { xs: '0.98rem', sm: '1.1rem' },
+                  fontWeight: 600,
+                  lineHeight: 1.2,
+                  minWidth: { xs: 96, sm: 116 },
+                }}
+              >
                 Sign out
               </Button>
-              <Button component={RouterLink} to="/create-campaign" variant="contained" size="small">
+              <Button
+                component={RouterLink}
+                to="/create-campaign"
+                variant="contained"
+                size="medium"
+                sx={{
+                  px: { xs: 1.8, sm: 2.3 },
+                  py: { xs: 0.78, sm: 0.98 },
+                  borderRadius: 2,
+                  fontSize: { xs: '0.98rem', sm: '1.12rem' },
+                  fontWeight: 700,
+                  lineHeight: 1.2,
+                  minWidth: { xs: 132, sm: 168 },
+                }}
+              >
                 New campaign
               </Button>
             </>
           ) : (
             <>
-              <MuiLink component={RouterLink} to="/signin" underline="none" color="text.primary">
+              <MuiLink
+                component={RouterLink}
+                to="/signin"
+                underline="none"
+                color="text.primary"
+                sx={{ fontSize: { xs: '1rem', sm: '1.14rem' }, fontWeight: 500 }}
+              >
                 Sign in
               </MuiLink>
-              <Button component={RouterLink} to="/create-campaign" variant="contained" size="small">
+              <Button
+                component={RouterLink}
+                to="/create-campaign"
+                variant="contained"
+                size="medium"
+                sx={{
+                  px: { xs: 1.8, sm: 2.3 },
+                  py: { xs: 0.78, sm: 0.98 },
+                  borderRadius: 2,
+                  fontSize: { xs: '0.98rem', sm: '1.12rem' },
+                  fontWeight: 700,
+                  lineHeight: 1.2,
+                  minWidth: { xs: 132, sm: 168 },
+                }}
+              >
                 Get started
               </Button>
             </>

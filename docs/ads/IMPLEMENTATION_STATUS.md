@@ -4,6 +4,11 @@
 > Project: `voyager-ads` (React + TypeScript + Vite) + `voyager-RN` (Expo) + `voyager-pwa/functions` (Cloud Functions)  
 > Test suite: **701 tests passing** (voyager-ads) · **2402 tests passing** (voyager-RN) · **572 tests passing** (functions) | TypeScript: **clean (0 errors)** on all projects
 
+Related planning docs:
+- [ADS_REQUIREMENTS.md](./ADS_REQUIREMENTS.md)
+- [AD_PRODUCT_PRD.md](./AD_PRODUCT_PRD.md)
+- [ADS_BILLING_PAYMENT_PLAN.md](./ADS_BILLING_PAYMENT_PLAN.md)
+
 ---
 
 ## Table of Contents
